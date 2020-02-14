@@ -55,6 +55,8 @@ WHERE
 
         $json = $article->export();
 
+        if (!is_dir(__DIR__ . '/export')) mkdir(__DIR__ . '/export', 0777, true);
+
         file_put_contents($filename, json_encode($json, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
 
         $message

@@ -20,7 +20,9 @@ MEDIA.TITLE.EXPORT_ALWAYS = 0           # 1: экспортировать даж
 MEDIA.HTML.EXPORT_STRING = 1
 MEDIA.HTML.EXPORT_BASE64 = 1
 MEDIA.HTML.EXPORT_RAW = 1
-MEDIA.HTML.SAVE_DEBUG = 1
+MEDIA.HTML.SAVE_DEBUG = 0
 
+# Настройки экспорта MEDIA:media
+MEDIA.MEDIA.EXPORT_RAW = 1              # сохранять ли исходные сырые данные?
 
 

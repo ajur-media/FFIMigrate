@@ -122,11 +122,29 @@ WHERE af.item = {$this->id}
         $_data['_'] = 0;
 
         while ($photo = $sth->fetch()) {
-            $photo['path'] = date('Y/m/', strtotime($photo['cdate'])) . $photo['file'];
+            // $photo['filepath'] = getenv('PATH.STORAGE') . date('Y/m/', strtotime($photo['cdate'])) . $photo['file'];
 
-            $_data[$photo['embed_id']] = $photo;
+            $set = [
+                'id'    =>  $photo['embed_id'],
+                'fid'   =>  $photo['mediafile_id'],
+                'title' =>  $photo['media_title'],
+                'alt'   =>  $photo['media_alttext'],
+                'source'=>  $photo['media_source'],
+                'path'  =>  getenv('PATH.STORAGE') . date('Y/m/', strtotime($photo['cdate'])) . $photo['file'],
+            ];
+
+            if (getenv('MEDIA.MEDIA.EXPORT_RAW'))
+                $set['raw'] = $photo;
+
+            $_data[$photo['embed_id']] = $set;
+
             $_data['_']++;
+            unset($set);
         }
+
+        // Если медиаданных этого типа нет - возвращаем пустой массив
+        if ($_data['_'] === 0)
+            $_data = [];
 
         return $_data;
     }
