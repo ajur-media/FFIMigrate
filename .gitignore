@@ -1,0 +1,6 @@
+.idea
+vendor
+export
+export/*
+composer.lock
+_env
