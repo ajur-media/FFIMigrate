@@ -18,6 +18,8 @@ AppLogger::addScope('main', [
 ]);
 
 try {
+    if (!is_dir(__DIR__ . '/export')) mkdir(__DIR__ . '/export', 0777, true);
+
     DB::init(NULL, [
         'database'  =>  getenv('DB_DATABASE'),
         'username'  =>  getenv('DB_USERNAME'),
@@ -33,7 +35,6 @@ try {
     $count_total = count($articles_ids_list);
 
     foreach ($articles_ids_list as $id) {
-        // $filename = "export/{$id}.json";
         $filename = "export/" . str_pad($id, 5, '0', STR_PAD_LEFT) . '.json';
         $count_curr++;
 
@@ -48,14 +49,9 @@ WHERE
 	a.id = {$id}
 ";
 
-        /**
-         * @class ArticleExporter $article
-         */
         $article = DB::query($query_get_article)->fetchObject('ArticleExporter');
 
         $json = $article->export();
-
-        if (!is_dir(__DIR__ . '/export')) mkdir(__DIR__ . '/export', 0777, true);
 
         file_put_contents($filename, json_encode($json, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
 
@@ -66,6 +62,10 @@ WHERE
 
         \Arris\CLIConsole::say($message);
     }
+
+    \Arris\CLIConsole::say();
+    \Arris\CLIConsole::say("Memory consumed: " . memory_get_peak_usage());
+    \Arris\CLIConsole::say('<hr>');
 
 } catch (Exception $e) {
     dd($e->getMessage());
