@@ -1,0 +1,30 @@
+{
+    "name": "fontankafi/migrate",
+    "description": "Fontanka.fi migration tool",
+    "type": "project",
+    "authors": [
+        {
+            "name": "wombat",
+            "email": "vim@fontanka.ru"
+        }
+    ],
+    "config": {
+        "optimize-autoloader": true
+    },
+    "require": {
+        "ext-curl": "*",
+        "ext-fileinfo": "*",
+        "ext-gd": "*",
+        "ext-mysqli": "*",
+        "ext-json": "*",
+        "ext-mbstring": "*",
+        "ext-iconv": "*",
+        "ext-pdo": "*",
+        "ext-simplexml": "*",
+        "ext-xmlwriter": "*",
+        "monolog/monolog": "^1.24",
+        "vlucas/phpdotenv": "^3.3",
+        "karelwintersky/arris": "^1.52",
+        "karelwintersky/steamboatengine": "^1.25.0"
+    }
+}
