@@ -1,0 +1,26 @@
+# --- Where: fontankafi migration tool @ whitegoldtower
+
+# DB #
+# Основная база данных (вы же понимаете, что это фейковыйе данные?)
+
+DB_USERNAME         = ""
+DB_PASSWORD         = ""
+DB_DATABASE     = "fontankafi"
+
+# Настройки TRIM
+TRIM.AUTHOR = 1
+TRIM.TITLE = 1
+TRIM.LEAD = 1
+
+# Настройки экспорта MEDIA:Title
+MEDIA.TITLE.EXPORT_RAW = 0              # экспортировать сырые десериализованные данные
+MEDIA.TITLE.EXPORT_ALWAYS = 0           # 1: экспортировать даже если данные пусты, иначе вернуть []
+
+# Настройки экспорта HTML-виджетов
+MEDIA.HTML.EXPORT_STRING = 1
+MEDIA.HTML.EXPORT_BASE64 = 1
+MEDIA.HTML.EXPORT_RAW = 1
+MEDIA.HTML.SAVE_DEBUG = 1
+
+
+
