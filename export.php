@@ -27,15 +27,17 @@ try {
         'charset'   =>  'UTF8'
     ], AppLogger::scope('mysql'));
 
-    $select_query = "SELECT id FROM articles ORDER BY id";
-    // $select_query = "SELECT id FROM articles WHERE id IN(19757, 20004, 20353, 20748, 21143) ORDER BY id";
+    $select_query = "SELECT id FROM articles ORDER BY id LIMIT 10";
 
     $articles_ids_list = DB::query($select_query)->fetchAll(PDO::FETCH_COLUMN);
     $count_curr  = 0;
     $count_total = count($articles_ids_list);
 
+    $media_collection = [];
+
+    // each article
     foreach ($articles_ids_list as $id) {
-        $filename = "export/" . str_pad($id, 5, '0', STR_PAD_LEFT) . '.json';
+        $filename = "export/article-" . str_pad($id, 5, '0', STR_PAD_LEFT) . '.json';
         $count_curr++;
 
         $query_get_article = "
@@ -49,11 +51,21 @@ WHERE
 	a.id = {$id}
 ";
 
+        /**
+         * @param ArticleExporter $article
+         */
         $article = DB::query($query_get_article)->fetchObject('ArticleExporter');
 
-        $json = $article->export();
+        $article_json = $article->exportArticle();
 
-        file_put_contents($filename, json_encode($json, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
+        // export embedded mediafiles
+        $article_mediafiles = $article->exportMediaFiles();
+        foreach ($article_mediafiles as $fid => $finfo) {
+            $media_collection[ $fid ] = $finfo;
+        }
+
+        // store item-NNNN.json
+        file_put_contents($filename, json_encode($article_json, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
 
         $message
             = "[" . str_pad($count_curr, 6, ' ', STR_PAD_LEFT)
@@ -61,7 +73,12 @@ WHERE
             " Article id = <font color='green'>{$id}</font> exported to file <font color='yellow'>{$filename}</font>";
 
         \Arris\CLIConsole::say($message);
+        unset($article);
     }
+
+    // сортируем массив медиа-данных по FID
+    asort($media_collection);
+    file_put_contents("export/mediafiles.json", json_encode($media_collection, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
 
     \Arris\CLIConsole::say();
     \Arris\CLIConsole::say("Memory consumed: " . memory_get_peak_usage());

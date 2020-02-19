@@ -1,9 +1,11 @@
 <?php
 
 use Arris\DB;
+use Spatie\Regex\Regex;
 
 class ArticleExporter
 {
+    private $id = 10;
     /**
      * @var array Датасет для экспорта
      */
@@ -19,7 +21,13 @@ class ArticleExporter
 
     }
 
-    public function export()
+    /**
+     * Экспортирует статью в JSON
+     *
+     * @return array
+     * @throws Exception
+     */
+    public function exportArticle()
     {
         $this->_dataset = [
             'oldid'     =>  $this->id,                                     // id статьи
@@ -38,14 +46,20 @@ class ArticleExporter
             'lead'      =>  self::_trim($this->short, 'TRIM.LEAD'),
             'media'     =>  [
                 'title'     =>  $this->parseMediaTitle(),
-                'media'     =>  $this->parseMediaPhotos(),
-                // 'reports'   =>  [],
-                'html'      =>  $this->parseHTMLWidgets()
+                'html'      =>  $this->parseHTMLWidgets(),
+                'photos'    =>  $this->parseMediaPhotos(),
+                // 'reports'   =>  $this->parseMediaReports(), // их может быть несколько
+                // возвращает массив с перечислениями фоторепортажа
             ],
             'text_bb'   =>  $this->text_bb,                                 // исходный текст, размеченный BB-кодами
         ];
 
         return $this->_dataset;
+    }
+
+    public function exportMediaFiles()
+    {
+        return $this->_media;
     }
 
     /**
@@ -65,14 +79,27 @@ class ArticleExporter
 
         if (!empty($u_photo) && is_array($u_photo)) {
             if (array_key_exists('file', $u_photo) && array_key_exists('path', $u_photo)) {
-                $_media_title['paths'] = [
+
+                $_media_title['path'] = stripslashes($u_photo['path']) . '/' . $u_photo['file'];
+
+                /*$_media_title['paths'] = [
                     stripslashes($u_photo['path']) . '/' . $u_photo['file']
-                ];
+                ];*/
                 $is_present = true;
             }
 
             if ($is_present && array_key_exists('descr', $u_photo)) {
-                $_media_title['titles'] = [ $u_photo['descr'] ];
+                // $_media_title['titles'] = [ $u_photo['descr'] ];
+                $_media_title['titles'] = $u_photo['descr'];
+            }
+
+            if (array_key_exists('file', $u_photo)) {
+                $basepath = getenv('PATH.STORAGE') . 'photos/' . date('Y/m', strtotime($this->cdate)) . '/';
+
+                $_media_title['realfile']
+                    = is_file($basepath . $u_photo['file'])
+                    ? $basepath . $u_photo['file']
+                    : '';
             }
         }
 
@@ -91,55 +118,92 @@ class ArticleExporter
     {
         $_data = [];
 
-        /*
-        select af.*, files.*
-from articles_files as af
-left join files on files.id = af.fid
-where af.item = 119
-         */
-
+        // А может быть запрос надо разджойнить и разбить на два?
         $query = "
-SELECT 
-       af.id AS embed_id,
+SELECT
+       af.id AS embed_id, 
        af.fid AS mediafile_id,
-       af.descr AS media_title,
-       files.name AS media_alttext,
-       files.cdate,
-       files.type,
-       files.file,
-       files.wm,
-       files.source AS media_source,
-       files.link AS media_link,
-       files.status,
-       files.status_size
+       af.descr AS media_description,
+       f.source AS media_source,
+       f.link AS media_link,
+       f.type AS media_type,
+       f.cdate AS media_cdate,
+       f.file AS mediafile_filename,
+       f.name AS mediafile_originalfilename
 FROM 
      articles_files AS af 
-LEFT JOIN files ON files.id = af.fid 
+LEFT JOIN files AS f ON f.id = af.fid 
 WHERE af.item = {$this->id}
         ";
 
         $sth = DB::query($query);
         $_data['_'] = 0;
 
-        while ($photo = $sth->fetch()) {
-            // $photo['filepath'] = getenv('PATH.STORAGE') . date('Y/m/', strtotime($photo['cdate'])) . $photo['file'];
+        while ($resource = $sth->fetch()) {
+            $media_type = $resource['media_type'];
+            $media_fid = $resource['mediafile_id'];
 
-            $set = [
-                'id'    =>  $photo['embed_id'],
-                'fid'   =>  $photo['mediafile_id'],
-                'title' =>  $photo['media_title'],
-                'alt'   =>  $photo['media_alttext'],
-                'source'=>  $photo['media_source'],
-                'path'  =>  getenv('PATH.STORAGE') . date('Y/m/', strtotime($photo['cdate'])) . $photo['file'],
+            $info_media = [
+                'fid'   =>  $media_fid,
+                'type'  =>  $media_type,
+                'descr' =>  $resource['media_description'],
             ];
 
-            if (getenv('MEDIA.MEDIA.EXPORT_RAW'))
-                $set['raw'] = $photo;
+            if (getenv('MEDIA.MEDIA.EXPORT_RAW')) {
+                $info_media['raw'] = $resource;
+            }
 
-            $_data[$photo['embed_id']] = $set;
+            $_data[$resource['embed_id']] = $info_media;
 
             $_data['_']++;
-            unset($set);
+            unset($info_media);
+
+            $info_file = [
+                'fid'       =>  $media_fid,
+                'type'      =>  $media_type,
+                'from'      =>  [
+                    'source'    =>  $resource['media_source'],
+                    'link'      =>  $resource['media_link'],
+                ],
+                'cdate'     =>  $resource['media_cdate'],
+                'original_name' =>  $resource['mediafile_originalfilename'],
+                'paths'     =>  []
+            ];
+
+            $basepath = getenv('PATH.STORAGE') . $media_type . '/' . date('Y/m', strtotime($resource['media_cdate'])) . '/';
+
+            $paths = [];
+            switch ($media_type) {
+                case 'photos': {
+
+                    if (is_file($basepath . '650x486_' . $resource['mediafile_filename'])) {
+                        $paths['preview'] = $basepath . '650x486_' . $resource['mediafile_filename'];
+                    }
+
+                    if (is_file($basepath . '1280x1024_' . $resource['mediafile_filename'])) {
+                        $paths['full'] = $basepath . '1280x1024_' . $resource['mediafile_filename'];
+                    }
+
+                    if (is_file($basepath . '' . $resource['mediafile_filename'])) {
+                        $paths['original'] = $basepath . '' . $resource['mediafile_filename'];
+                    }
+
+                    break;
+                }
+                case 'files':
+                case 'audios':
+                case 'videos': {
+                    if (is_file($basepath . $resource['mediafile_filename'])) {
+                        $paths['full'] = $basepath . $resource['mediafile_filename'];
+                    }
+
+                    break;
+                }
+
+            } // switch
+            $info_file['paths'] = $paths;
+
+            $this->_media[ $media_fid ] = $info_file;
         }
 
         // Если медиаданных этого типа нет - возвращаем пустой массив
@@ -147,18 +211,9 @@ WHERE af.item = {$this->id}
             $_data = [];
 
         return $_data;
-    }
 
-    /**
-     * Применяет trim если установлена соотв. переменная конфига
-     *
-     * @param $value
-     * @param $env
-     * @return string
-     */
-    private static function _trim($value, $env)
-    {
-        return getenv($env) ? trim($value) : $value;
+
+
     }
 
     /**
@@ -210,6 +265,18 @@ WHERE af.item = {$this->id}
     private static function _isBase64($string)
     {
         return (base64_decode($string, true) !== false);
+    }
+
+    /**
+     * Применяет trim если установлена соотв. переменная конфига
+     *
+     * @param $value
+     * @param $env
+     * @return string
+     */
+    private static function _trim($value, $env)
+    {
+        return getenv($env) ? trim($value) : $value;
     }
 
 }
