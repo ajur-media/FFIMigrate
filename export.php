@@ -3,6 +3,7 @@
 ini_set('memory_limit','256M');
 
 use Arris\AppLogger;
+use Arris\CLIConsole;
 use Arris\DB;
 use Monolog\Logger;
 use Dotenv\Dotenv;
@@ -72,7 +73,7 @@ WHERE
             . " / " . str_pad($count_total, 6, ' ', STR_PAD_RIGHT) . ']' .
             " Article id = <font color='green'>{$id}</font> exported to file <font color='yellow'>{$filename}</font>";
 
-        \Arris\CLIConsole::say($message);
+        CLIConsole::say($message);
         unset($article);
     }
 
@@ -80,9 +81,9 @@ WHERE
     asort($media_collection);
     file_put_contents("export/mediafiles.json", json_encode($media_collection, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
 
-    \Arris\CLIConsole::say();
-    \Arris\CLIConsole::say("Memory consumed: " . memory_get_peak_usage());
-    \Arris\CLIConsole::say('<hr>');
+    CLIConsole::say();
+    CLIConsole::say("Memory consumed: " . memory_get_peak_usage());
+    CLIConsole::say('<hr>');
 
 } catch (Exception $e) {
     dd($e->getMessage());

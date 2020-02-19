@@ -5,7 +5,13 @@ use Spatie\Regex\Regex;
 
 class ArticleExporter
 {
-    private $id = 10;
+    private
+        $id, $cdate, $type,
+        $author, $author_id, $author_login,
+        $s_hidden, $s_draft,
+        $title, $short, $text_bb,
+        $photo, $html;
+
     /**
      * @var array Датасет для экспорта
      */
@@ -18,7 +24,6 @@ class ArticleExporter
 
     public function __construct()
     {
-
     }
 
     /**
@@ -114,6 +119,11 @@ class ArticleExporter
         return $_media_title;
     }
 
+    /**
+     *
+     * @return array
+     * @throws Exception
+     */
     private function parseMediaPhotos()
     {
         $_data = [];
