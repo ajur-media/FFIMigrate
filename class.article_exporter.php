@@ -30,7 +30,12 @@ class ArticleExporter
     /**
      * @var array
      */
-    private $_article_media_title, $_article_media_html, $_article_media_inline;
+    private $_article_media_title, $_article_media_html;
+
+    /**
+     * @var array
+     */
+    private $_article_media_inline, $_article_media_reports;
 
     /**
      * ArticleExporter constructor.
@@ -41,7 +46,7 @@ class ArticleExporter
     public function __construct($id)
     {
         // загружаем список статей VIEW ALSO
-        $this->_articles_related = $this->getRelatedArticles($id);
+        $this->_articles_related = $this->getRelatedArticles();
 
         $this->prepareData();
     }
@@ -53,7 +58,7 @@ class ArticleExporter
      * @return array
      * @throws Exception
      */
-    private function getRelatedArticles($id)
+    private function getRelatedArticles()
     {
         return
             DB::query("
@@ -63,7 +68,7 @@ ORDER BY cdate ")
             ->fetchAll(PDO::FETCH_FUNC, function ($id, $cdate, $title) {
                 return [
                     'id'    =>  (int)$id,
-                    'cdate' =>  date('c', strtotime($cdate)),
+                    'cdate' =>  self::_date_format($cdate),
                     'title' =>  $title
                 ];
             });
@@ -94,11 +99,13 @@ ORDER BY cdate ")
 
         $this->_article_media_title = $this->parseMediaTitle();
         $this->_article_media_html = $this->parseHTMLWidgets();
+
         $this->_article_media_inline = $this->parseMediaInline();
+        $this->_article_media_reports = $this->parseMediaReports();
 
         $this->_dataset = [
             'oldid'     =>  $this->id,                                     // id статьи
-            'cdate'     =>  date('c', strtotime($this->cdate)),     // ISO Date
+            'cdate'     =>  self::_date_format($this->cdate),     // ISO Date
             'type'      =>  $this->type,                                    // тип
             'creator'   =>  [                                               // информация об авторе
                 'id'        =>  $this->author_id,                           // ID
@@ -113,9 +120,8 @@ ORDER BY cdate ")
             'media'     =>  [
                 'title'     =>  $this->_article_media_title,
                 'html'      =>  $this->_article_media_html,
-                'media'    =>  $this->_article_media_inline,
-                // 'reports'   =>  $this->parseMediaReports(), // их может быть несколько
-                // возвращает массив с перечислениями фоторепортажа
+                'media'     =>  $this->_article_media_inline,
+                'reports'   =>  $this->_article_media_reports,
             ],
             'lead'      =>  self::_trim($this->short, 'TRIM.LEAD'),
             'text_bb'   =>  $this->text_bb,                                 // исходный текст, размеченный BB-кодами
@@ -216,7 +222,6 @@ ORDER BY cdate ")
     {
         $_data = [];
 
-        // А может быть запрос надо разджойнить и разбить на два?
         $query = "
 SELECT
        af.id AS embed_id, 
@@ -274,7 +279,11 @@ WHERE af.item = {$this->id}
             switch ($media_type) {
                 case 'photos': {
 
-                    if (is_file($basepath . '650x486_' . $resource['mediafile_filename'])) {
+                    self::_check_file($paths['preview'], $basepath . '650x486_' . $resource['mediafile_filename']);
+                    self::_check_file($paths['full'], $basepath . '1280x1024_' . $resource['mediafile_filename']);
+                    self::_check_file($paths['original'], $basepath . '' . $resource['mediafile_filename']);
+
+                    /*if (is_file($basepath . '650x486_' . $resource['mediafile_filename'])) {
                         $paths['preview'] = $basepath . '650x486_' . $resource['mediafile_filename'];
                     }
 
@@ -284,7 +293,7 @@ WHERE af.item = {$this->id}
 
                     if (is_file($basepath . '' . $resource['mediafile_filename'])) {
                         $paths['original'] = $basepath . '' . $resource['mediafile_filename'];
-                    }
+                    }*/
 
                     break;
                 }
@@ -311,6 +320,87 @@ WHERE af.item = {$this->id}
         return $_data;
 
 
+
+    }
+
+    /**
+     * Возвращает фоторепортажи
+     *
+     * @return array
+     * @throws Exception
+     */
+    private function parseMediaReports()
+    {
+        $id = $this->id;
+        $_reports = [];
+
+        $fetch_data = DB::query("
+SELECT 
+     id, title, short, cdate
+FROM
+     reports
+WHERE id IN (
+    SELECT bind FROM articles_reports WHERE item = {$id}
+) ORDER BY id 
+        ")->fetchAll();
+
+        foreach ($fetch_data as $report) {
+            $rid = (int)$report['id'];
+            $report['id'] = $rid;
+            $report['cdate'] = self::_date_format($report['cdate']);
+
+            // теперь получаем файлы, относящиеся к фоторепортажу
+
+            $query_get_files = "
+SELECT 
+	rf.item AS report_id,
+	rf.fid AS mediafile_id,
+	rf.descr AS report_description,
+	f.name AS mediafile_sourcename,
+	f.cdate AS mediafile_cdate,
+	f.type AS mediafile_type,
+	f.file AS mediafile_filename,
+	f.wm AS mediafile_wmposition,
+	f.source AS mediafile_source,
+	f.link AS mediafile_link
+FROM reports_files as rf 
+LEFT JOIN files AS f ON f.id = rf.fid 
+WHERE rf.item = {$rid}            
+            ";
+            $photoreport_files = DB::query($query_get_files)->fetchAll();
+            // тут можно сделать FETCH_FUNC, но придется писать функцию с огромным списком параметром
+            // а создавать отдельный класс для экспорта (и писать PDO::FETCH_OBJ, "export_report_files" - излишество.
+            // поэтому обработку просто выносим наружу, в foreach
+
+            $report['media'] = [
+                '_' =>  count($photoreport_files)
+            ];
+
+            foreach ($photoreport_files as $rf) {
+                $fid = (int)$rf['mediafile_id'];
+                $rf['mediafile_id'] = $fid;
+                $rf['mediafile_cdate'] = self::_date_format($rf['mediafile_cdate']);
+
+                $media_type = $rf['mediafile_type'];
+
+                $basepath = getenv('PATH.STORAGE') . $media_type . '/' . date('Y/m', strtotime($rf['mediafile_cdate'])) . '/';
+
+                $paths = [];
+
+                self::_check_file($paths['preview'], $basepath . '150x100_' . $rf['mediafile_filename']);
+                self::_check_file($paths['full'], $basepath . '1280x1024_' . $rf['mediafile_filename']);
+                self::_check_file($paths['original'], $basepath . '' . $rf['mediafile_filename']);
+
+                $rf['paths'] = $paths;
+
+                $report['media'][$fid] = $rf;
+            } // each photoreport
+
+            // дополняем $report данными из files по связи report_files
+            $_reports[ $rid ] = $report;
+        }
+
+        return $_reports;
 
     }
 
@@ -360,6 +450,8 @@ WHERE af.item = {$this->id}
         return $_data;
     }
 
+    /* ================================ STATIC METHODS ================================== */
+
     private static function _isBase64($string)
     {
         return (base64_decode($string, true) !== false);
@@ -376,5 +468,34 @@ WHERE af.item = {$this->id}
     {
         return getenv($env) ? trim($value) : $value;
     }
+
+    /**
+     * Форматирует дату в ISO
+     *
+     * @param $date_string
+     * @return false|string
+     */
+    private static function _date_format($date_string)
+    {
+        return date('c', strtotime($date_string));
+    }
+
+    /**
+     * Проверяет существование файла и если он существует - записывает его в соотв поле target
+     * @param $target
+     * @param $filepath
+     */
+    private static function _check_file(&$target, $filepath)
+    {
+        if (getenv('MEDIA.EXPORT_ONLY_PRESENT_FILES')) {
+            if (is_file($filepath)) {
+                $target = $filepath;
+            };
+        } else {
+            $target = $filepath;
+        }
+
+    }
+
 
 }
