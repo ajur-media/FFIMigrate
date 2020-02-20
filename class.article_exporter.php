@@ -10,6 +10,7 @@ class ArticleExporter
         $author, $author_id, $author_login,
         $s_hidden, $s_draft,
         $title, $short, $text_bb,
+        $districts, $rubrics,
         $photo, $html;
 
     /**
@@ -20,20 +21,81 @@ class ArticleExporter
     /**
      * @var array Сет медиаресурсов
      */
-    private $_media = [];
+    private $_media_collection_inline = [];
 
-    public function __construct()
+    private $_media_collection_title = [];
+
+    private $_articles_related = [];
+
+    /**
+     * @var array
+     */
+    private $_article_media_title, $_article_media_html, $_article_media_inline;
+
+    /**
+     * ArticleExporter constructor.
+     *
+     * @param $id
+     * @throws Exception
+     */
+    public function __construct($id)
     {
+        // загружаем список статей VIEW ALSO
+        $this->_articles_related = $this->getRelatedArticles($id);
+
+        $this->prepareData();
     }
 
     /**
-     * Экспортирует статью в JSON
+     * Возвращает массив статей "по теме"
      *
+     * @param $id
      * @return array
      * @throws Exception
      */
-    public function exportArticle()
+    private function getRelatedArticles($id)
     {
+        return
+            DB::query("
+SELECT id, cdate, title FROM articles
+WHERE id IN (SELECT bind FROM articles_related WHERE item = {$this->id})
+ORDER BY cdate ")
+            ->fetchAll(PDO::FETCH_FUNC, function ($id, $cdate, $title) {
+                return [
+                    'id'    =>  (int)$id,
+                    'cdate' =>  date('c', strtotime($cdate)),
+                    'title' =>  $title
+                ];
+            });
+    }
+
+    /**
+     * Подготавливает данные для экспорта
+     *
+     * @throws Exception
+     */
+    private function prepareData()
+    {
+        $rubrics = @unserialize($this->rubrics);
+        if (is_array($rubrics)) {
+            $this->rubrics = [];
+            foreach ($rubrics as $id => $r) {
+                $this->rubrics[ (int)$id ] = $r['name'];
+            }
+        }
+
+        $districs = @unserialize($this->districts);
+        if (is_array($districs)) {
+            $this->districts = [];
+            foreach ($districs as $id => $d) {
+                $this->districts[ (int)$id ] = $d['name'];
+            }
+        }
+
+        $this->_article_media_title = $this->parseMediaTitle();
+        $this->_article_media_html = $this->parseHTMLWidgets();
+        $this->_article_media_inline = $this->parseMediaInline();
+
         $this->_dataset = [
             'oldid'     =>  $this->id,                                     // id статьи
             'cdate'     =>  date('c', strtotime($this->cdate)),     // ISO Date
@@ -48,23 +110,56 @@ class ArticleExporter
                 'is_draft'  =>  $this->s_draft,                             // установлен флаг "черновик"
             ],
             'title'     =>  self::_trim($this->title, 'TRIM.TITLE'),
-            'lead'      =>  self::_trim($this->short, 'TRIM.LEAD'),
             'media'     =>  [
-                'title'     =>  $this->parseMediaTitle(),
-                'html'      =>  $this->parseHTMLWidgets(),
-                'photos'    =>  $this->parseMediaPhotos(),
+                'title'     =>  $this->_article_media_title,
+                'html'      =>  $this->_article_media_html,
+                'media'    =>  $this->_article_media_inline,
                 // 'reports'   =>  $this->parseMediaReports(), // их может быть несколько
                 // возвращает массив с перечислениями фоторепортажа
             ],
+            'lead'      =>  self::_trim($this->short, 'TRIM.LEAD'),
             'text_bb'   =>  $this->text_bb,                                 // исходный текст, размеченный BB-кодами
+            'uncommon'    =>  [
+                'related'   =>  $this->_articles_related,
+                'districts' =>  $this->districts,
+                'rubrics'   =>  $this->rubrics
+            ],
+
         ];
 
+
+
+    }
+
+    /**
+     * Экспортирует статью в JSON
+     *
+     * @return array
+     * @throws Exception
+     */
+    public function exportArticle()
+    {
         return $this->_dataset;
     }
 
-    public function exportMediaFiles()
+    /**
+     * Возвращает коллекцию инлайт-медиаданных
+     *
+     * @return array
+     */
+    public function exportInlineMediaCollection()
     {
-        return $this->_media;
+        return $this->_media_collection_inline;
+    }
+
+    /**
+     * Возвращает коллекцию тайтл-фотографий (из 1 элемента)
+     *
+     * @return array
+     */
+    public function exportTitleMediaCollection()
+    {
+        return $this->_article_media_title;
     }
 
     /**
@@ -76,25 +171,18 @@ class ArticleExporter
     {
         $u_photo = ($this->photo != '') ? @unserialize($this->photo) : [];
 
-        $_media_title = [
-            'type'  =>  'title'
-        ];
+        $_media_title = [];
 
         $is_present = false;
 
         if (!empty($u_photo) && is_array($u_photo)) {
             if (array_key_exists('file', $u_photo) && array_key_exists('path', $u_photo)) {
+                $_media_title['uri'] = stripslashes($u_photo['path']) . '/' . $u_photo['file'];
 
-                $_media_title['path'] = stripslashes($u_photo['path']) . '/' . $u_photo['file'];
-
-                /*$_media_title['paths'] = [
-                    stripslashes($u_photo['path']) . '/' . $u_photo['file']
-                ];*/
                 $is_present = true;
             }
 
             if ($is_present && array_key_exists('descr', $u_photo)) {
-                // $_media_title['titles'] = [ $u_photo['descr'] ];
                 $_media_title['titles'] = $u_photo['descr'];
             }
 
@@ -124,7 +212,7 @@ class ArticleExporter
      * @return array
      * @throws Exception
      */
-    private function parseMediaPhotos()
+    private function parseMediaInline()
     {
         $_data = [];
 
@@ -213,7 +301,7 @@ WHERE af.item = {$this->id}
             } // switch
             $info_file['paths'] = $paths;
 
-            $this->_media[ $media_fid ] = $info_file;
+            $this->_media_collection_inline[ $media_fid ] = $info_file;
         }
 
         // Если медиаданных этого типа нет - возвращаем пустой массив
