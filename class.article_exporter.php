@@ -13,6 +13,9 @@ class ArticleExporter
         $districts, $rubrics,
         $photo, $html;
 
+    private
+        $meta_keywords, $meta_descr, $meta_title;
+
     /**
      * @var array Датасет для экспорта
      */
@@ -81,22 +84,6 @@ ORDER BY cdate ")
      */
     private function prepareData()
     {
-        $rubrics = @unserialize($this->rubrics);
-        if (is_array($rubrics)) {
-            $this->rubrics = [];
-            foreach ($rubrics as $id => $r) {
-                $this->rubrics[ (int)$id ] = $r['name'];
-            }
-        }
-
-        $districs = @unserialize($this->districts);
-        if (is_array($districs)) {
-            $this->districts = [];
-            foreach ($districs as $id => $d) {
-                $this->districts[ (int)$id ] = $d['name'];
-            }
-        }
-
         $this->_article_media_title = $this->parseMediaTitle();
         $this->_article_media_html = $this->parseHTMLWidgets();
 
@@ -125,12 +112,21 @@ ORDER BY cdate ")
             ],
             'lead'      =>  self::_trim($this->short, 'TRIM.LEAD'),
             'text_bb'   =>  $this->text_bb,                                 // исходный текст, размеченный BB-кодами
-            'uncommon'    =>  [
-                'related'   =>  $this->_articles_related,
-                'districts' =>  $this->districts,
-                'rubrics'   =>  $this->rubrics
+            'view_also'  =>  [
+                '_'     =>  count($this->_articles_related),
+                'data'  =>  $this->_articles_related,
             ],
+            'meta'    =>  [
+                'title'     =>  $this->meta_title,
+                'keywords'  =>  $this->meta_keywords,
+                'description'=> $this->meta_descr,
 
+            ],
+            'relations' =>  [
+                'districts' =>  $this->exportArticleDistricts(),
+                'rubrics'   =>  $this->exportArticleRubrics(),
+                'tags'      =>  $this->exportArticleTags()
+            ]
         ];
 
 
@@ -450,6 +446,68 @@ WHERE rf.item = {$rid}
         return $_data;
     }
 
+    /**
+     * Десериализует список рубрик
+     *
+     * @return array
+     */
+    private function exportArticleRubrics()
+    {
+        $rubrics = @unserialize($this->rubrics);
+        $data = [];
+        if (is_array($rubrics)) {
+            foreach ($rubrics as $id => $r) {
+                $data[ (int)$id ] = $r['name'];
+            }
+        }
+        return $data;
+    }
+
+    /**
+     * Десериализует список районов
+     *
+     * @return array
+     */
+    private function exportArticleDistricts()
+    {
+        $districs = @unserialize($this->districts);
+        $data = [];
+        if (is_array($districs)) {
+            $this->districts = [];
+            foreach ($districs as $id => $d) {
+                $data[ (int)$id ] = $d['name'];
+            }
+        }
+        return $data;
+    }
+
+    /**
+     * Экспортирует список тегов из базы (если есть)
+     *
+     * @return array
+     * @throws Exception
+     */
+    private function exportArticleTags()
+    {
+        $data = [];
+        $id = $this->id;
+
+        $query = "
+SELECT 
+    ta.id AS tag_id,
+    ta.name AS tag_text,
+    ta.sort AS tag_order
+FROM 
+     articles_tags 
+LEFT JOIN tags_articles AS ta ON ta.id = articles_tags.bind
+WHERE item = {$id}
+ORDER BY ta.sort DESC         
+        ";
+
+        $data = DB::query($query)->fetchAll();
+        return $data === false ? [] : $data;
+    }
+
     /* ================================ STATIC METHODS ================================== */
 
     private static function _isBase64($string)
@@ -496,6 +554,8 @@ WHERE rf.item = {$rid}
         }
 
     }
+
+
 
 
 }

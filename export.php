@@ -29,8 +29,9 @@ try {
     ], AppLogger::scope('mysql'));
 
     // запрос
-    $select_query = "SELECT id FROM articles WHERE id IN (16108,19899,27927,29940,31181,31717,32441,33830,34591,34662,35442,36138,37384,38294) ORDER BY id";
+    // $select_query = "SELECT id FROM articles WHERE id IN (16108,19899,27927,29940,31181,31717,32441,33830,34591,34662,35442,36138,37384,38294) ORDER BY id";
     // $select_query = "SELECT id FROM articles  ORDER BY id LIMIT 100";
+    $select_query = "SELECT id FROM articles  ORDER BY id";
 
     // получаем список ID статей
     $articles_ids_list = DB::query($select_query)->fetchAll(PDO::FETCH_COLUMN);
