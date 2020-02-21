@@ -2,6 +2,8 @@
 
 use Arris\DB;
 
+// require_once 'class.FFIECommon.php';
+
 class ArticleExporter
 {
     /*
@@ -14,6 +16,7 @@ class ArticleExporter
         $title, $short, $text_bb,
         $districts, $rubrics,
         $photo, $html,
+        $s_bold, $s_own,
         $meta_keywords, $meta_descr, $meta_title;
 
     /**
@@ -55,29 +58,35 @@ class ArticleExporter
 
         $this->_dataset = [
             'id'        =>  (int)$this->id,                                     // id статьи
-            'cdate'     =>  self::_date_format($this->cdate),     // ISO Date
+            'cdate'     =>  FFIECommon::_date_format($this->cdate),     // ISO Date
             'type'      =>  $this->type,                                    // тип
             'creator'   =>  [                                               // информация об авторе
                 'id'        =>  (int)$this->author_id,                           // ID
                 'login'     =>  $this->author_login,                        // логин
-                'sign'      =>  self::_trim($this->author, 'TRIM.AUTHOR')                               // подпись
+                'sign'      =>  FFIECommon::_trim($this->author, 'TRIM.AUTHOR')                               // подпись
             ],
             'status'    =>  [                                               // статус статьи в базе
                 'is_hidden' =>  (int)$this->s_hidden,                            // установлен флаг "скрытая"
                 'is_draft'  =>  (int)$this->s_draft,                             // установлен флаг "черновик"
+                'is_bold'    =>  (int)$this->s_bold,                        // тайтл жирно
+                'is_own'        =>  (int)$this->s_own,                      //  с копирайтом © Fontanka.Fi
+
             ],
-            'title'     =>  self::_trim($this->title, 'TRIM.TITLE'),
+            'content'   =>  [
+                'title'     =>  FFIECommon::_trim($this->title, 'TRIM.TITLE'),
+                'lead'      =>  FFIECommon::_trim($this->short, 'TRIM.LEAD'),
+                'text_length'   =>  mb_strlen(trim($this->text_bb)),
+                'text_bb'   =>  $this->text_bb,                                 // исходный текст, размеченный BB-кодами
+            ],
             'media'     =>  [
                 'title'     =>  $this->_article_media_title,
                 'html'      =>  $this->_article_media_html,
                 'media'     =>  $this->_article_media_inline,
                 'reports'   =>  $this->_article_media_reports,
             ],
-            'lead'      =>  self::_trim($this->short, 'TRIM.LEAD'),
-            'text_bb'   =>  $this->text_bb,                                 // исходный текст, размеченный BB-кодами
             'view_also'  =>  [
                 '_'     =>  count($this->_articles_related),
-                'data'  =>  $this->_articles_related,
+                'list'  =>  $this->_articles_related,
             ],
             'meta'    =>  [
                 'title'     =>  $this->meta_title,
@@ -152,7 +161,7 @@ class ArticleExporter
             if (array_key_exists('file', $u_photo)) {
                 $basepath = getenv('PATH.STORAGE') . 'photos/' . date('Y/m', strtotime($this->cdate)) . '/';
 
-                self::_check_file($_media_title['realfile'], $basepath . $u_photo['file']);
+                FFIECommon::_check_file($_media_title['realfile'], $basepath . $u_photo['file']);
             }
         }
 
@@ -228,16 +237,16 @@ WHERE af.item = {$this->id}
             $paths = [];
             switch ($media_type) {
                 case 'photos': {
-                    self::_check_file($paths['preview'], $basepath . '650x486_' . $resource['mediafile_filename']);
-                    self::_check_file($paths['full'], $basepath . '1280x1024_' . $resource['mediafile_filename']);
-                    self::_check_file($paths['original'], $basepath . '' . $resource['mediafile_filename']);
+                    FFIECommon::_check_file($paths['preview'], $basepath . '650x486_' . $resource['mediafile_filename']);
+                    FFIECommon::_check_file($paths['full'], $basepath . '1280x1024_' . $resource['mediafile_filename']);
+                    FFIECommon::_check_file($paths['original'], $basepath . '' . $resource['mediafile_filename']);
 
                     break;
                 }
                 case 'files':
                 case 'audios':
                 case 'videos': {
-                    self::_check_file($paths['full'], $basepath . $resource['mediafile_filename']);
+                FFIECommon::_check_file($paths['full'], $basepath . $resource['mediafile_filename']);
 
                     break;
                 }
@@ -279,7 +288,7 @@ WHERE id IN (
         foreach ($fetch_data as $report) {
             $rid = (int)$report['id'];
             $report['id'] = $rid;
-            $report['cdate'] = self::_date_format($report['cdate']);
+            $report['cdate'] = FFIECommon::_date_format($report['cdate']);
 
             // теперь получаем файлы, относящиеся к фоторепортажу
 
@@ -311,7 +320,7 @@ WHERE rf.item = {$rid}
             foreach ($photoreport_files as $rf) {
                 $fid = (int)$rf['mediafile_id'];
                 $rf['mediafile_id'] = $fid;
-                $rf['mediafile_cdate'] = self::_date_format($rf['mediafile_cdate']);
+                $rf['mediafile_cdate'] = FFIECommon::_date_format($rf['mediafile_cdate']);
 
                 $media_type = $rf['mediafile_type'];
 
@@ -319,9 +328,9 @@ WHERE rf.item = {$rid}
 
                 $paths = [];
 
-                self::_check_file($paths['preview'], $basepath . '150x100_' . $rf['mediafile_filename']);
-                self::_check_file($paths['full'], $basepath . '1280x1024_' . $rf['mediafile_filename']);
-                self::_check_file($paths['original'], $basepath . '' . $rf['mediafile_filename']);
+                FFIECommon::_check_file($paths['preview'], $basepath . '150x100_' . $rf['mediafile_filename']);
+                FFIECommon::_check_file($paths['full'], $basepath . '1280x1024_' . $rf['mediafile_filename']);
+                FFIECommon::_check_file($paths['original'], $basepath . '' . $rf['mediafile_filename']);
 
                 $rf['paths'] = $paths;
 
@@ -356,7 +365,7 @@ WHERE rf.item = {$rid}
         ) return false; // виджетов нет
         */
 
-        $html = self::_isBase64($this->html) ? base64_decode($this->html) : $this->html;
+        $html = FFIECommon::_isBase64($this->html) ? base64_decode($this->html) : $this->html;
         $html = unserialize($html);
 
         if (!$html) return [];
@@ -443,53 +452,6 @@ ORDER BY ta.sort DESC
         return $data === false ? [] : $data;
     }
 
-    /* ================================ STATIC METHODS ================================== */
-
-    private static function _isBase64($string)
-    {
-        return (base64_decode($string, true) !== false);
-    }
-
-    /**
-     * Применяет trim если установлена соотв. переменная конфига
-     *
-     * @param $value
-     * @param $env
-     * @return string
-     */
-    private static function _trim($value, $env)
-    {
-        return getenv($env) ? trim($value) : $value;
-    }
-
-    /**
-     * Форматирует дату в ISO
-     *
-     * @param $date_string
-     * @return false|string
-     */
-    private static function _date_format($date_string)
-    {
-        return date('c', strtotime($date_string));
-    }
-
-    /**
-     * Проверяет существование файла и если он существует - записывает его в соотв поле target
-     * @param $target
-     * @param $filepath
-     */
-    private static function _check_file(&$target, $filepath)
-    {
-        if (getenv('MEDIA.EXPORT_ONLY_PRESENT_FILES')) {
-            if (is_file($filepath)) {
-                $target = $filepath;
-            };
-        } else {
-            $target = $filepath;
-        }
-
-    }
-
     /**
      * Возвращает массив статей "по теме"
      *
@@ -506,7 +468,7 @@ ORDER BY cdate ")
                 ->fetchAll(PDO::FETCH_FUNC, function ($id, $cdate, $title) {
                     return [
                         'id'    =>  (int)$id,
-                        'cdate' =>  self::_date_format($cdate),
+                        'cdate' =>  FFIECommon::_date_format($cdate),
                         'title' =>  $title
                     ];
                 });

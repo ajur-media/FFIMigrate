@@ -5,15 +5,19 @@
 
 DB_USERNAME         = ""
 DB_PASSWORD         = ""
-DB_DATABASE     = "fontankafi"
+DB_DATABASE     = ""
 
-# path to storage (with tailing slash)
+# Path to storage (with tailing slash)
 
 PATH.STORAGE    = ""
 
 # Export directory (without tailing slash) from current
 
-PATH.EXPORT_DIR = "_export"
+PATH.EXPORT.ALL         =   "_export"
+
+EXPORT.SEPARATE_BY_TYPE     = 1
+PATH.EXPORT.ARTICLES        =   "_export/articles"
+PATH.EXPORT.NEWS            =   "_export/news"
 
 # Настройки TRIM
 TRIM.AUTHOR = 1
@@ -21,7 +25,8 @@ TRIM.TITLE = 1
 TRIM.LEAD = 1
 
 # Общие настройки экспорта
-MEDIA.EXPORT_ONLY_PRESENT_FILES = 0
+EXPORT.MEDIA.ONLY_PRESENT_FILES = 0
+
 
 # Настройки экспорта MEDIA:Title
 MEDIA.TITLE.EXPORT_RAW = 0              # экспортировать сырые десериализованные данные
