@@ -9,7 +9,7 @@ use Monolog\Logger;
 use Dotenv\Dotenv;
 
 require_once __DIR__ . '/vendor/autoload.php';
-require_once __DIR__ . '/class.article_exporter.php';
+require_once __DIR__ . '/classes/class.article_exporter.php';
 
 Dotenv::create(__DIR__, '_env')->load();
 
@@ -19,7 +19,10 @@ AppLogger::addScope('main', [
 ]);
 
 try {
-    if (!is_dir(__DIR__ . '/export')) mkdir(__DIR__ . '/export', 0777, true);
+    $export_directory = getenv('PATH.EXPORT_DIR');
+    if (!is_dir(__DIR__ . DIRECTORY_SEPARATOR . getenv('PATH.EXPORT_DIR'))) {
+        mkdir(__DIR__ . DIRECTORY_SEPARATOR . getenv('PATH.EXPORT_DIR'), 0777, true);
+    }
 
     DB::init(NULL, [
         'database'  =>  getenv('DB_DATABASE'),
@@ -30,7 +33,7 @@ try {
 
     // запрос
     // $select_query = "SELECT id FROM articles WHERE id IN (16108,19899,27927,29940,31181,31717,32441,33830,34591,34662,35442,36138,37384,38294) ORDER BY id";
-    // $select_query = "SELECT id FROM articles  ORDER BY id LIMIT 100";
+    // $select_query = "SELECT id FROM articles  ORDER BY id LIMIT 1000";
     $select_query = "SELECT id FROM articles  ORDER BY id";
 
     // получаем список ID статей
@@ -59,7 +62,7 @@ WHERE
         /**
          * @param ArticleExporter $article
          */
-        $article = DB::query($query_get_article)->fetchObject('ArticleExporter', [ $id ]);
+        $article = DB::query($query_get_article)->fetchObject('ArticleExporter');
 
         $article_export = $article->exportArticle();
 
@@ -70,10 +73,10 @@ WHERE
         }
 
         // экспортируем тайтловые медиафайлы
-        $media_titles[ $article_export['oldid'] ] = $article->exportTitleMediaCollection();
+        $media_titles[ $article_export['id'] ] = $article->exportTitleMediaCollection();
 
         // пишем данные в файл
-        $filename = "export/article-" . str_pad($id, 5, '0', STR_PAD_LEFT) . '.json';
+        $filename = "{$export_directory}/article-" . str_pad($id, 5, '0', STR_PAD_LEFT) . '.json';
         file_put_contents($filename, json_encode($article_export, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
 
         // сообщение
@@ -86,13 +89,13 @@ WHERE
         unset($article);
     } // foreach article
 
-    CLIConsole::say("Exporting <font color='yellow'>media-inline.json</font>...");
-    asort($media_inline);
-    file_put_contents("export/media-inline.json", json_encode($media_inline, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
+    CLIConsole::say("Exporting <font color='yellow'>{$export_directory}/media-inline.json</font>...");
+    ksort($media_inline, SORT_NATURAL);
+    file_put_contents("{$export_directory}/media-inline.json", json_encode($media_inline, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
 
-    CLIConsole::say("Exporting <font color='yellow'>media-title.json</font>...");
-    asort($media_titles);
-    file_put_contents("export/media-title.json", json_encode($media_titles, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
+    CLIConsole::say("Exporting <font color='yellow'>{$export_directory}/media-title.json</font>...");
+    ksort($media_titles, SORT_NATURAL);
+    file_put_contents("{$export_directory}/media-title.json", json_encode($media_titles, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
 
     CLIConsole::say();
     CLIConsole::say("Memory consumed: " . memory_get_peak_usage());

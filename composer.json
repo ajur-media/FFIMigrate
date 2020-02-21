@@ -25,7 +25,6 @@
         "monolog/monolog": "^1.24",
         "vlucas/phpdotenv": "^3.3",
         "karelwintersky/arris": "^1.52",
-        "karelwintersky/steamboatengine": "^1.25.0",
-        "spatie/regex": "^1.4"
+        "karelwintersky/steamboatengine": "^1.25.0"
     }
 }

@@ -5,15 +5,16 @@ use Spatie\Regex\Regex;
 
 class ArticleExporter
 {
+    /*
+     * Autoloaded fields
+     */
     private
         $id, $cdate, $type,
         $author, $author_id, $author_login,
         $s_hidden, $s_draft,
         $title, $short, $text_bb,
         $districts, $rubrics,
-        $photo, $html;
-
-    private
+        $photo, $html,
         $meta_keywords, $meta_descr, $meta_title;
 
     /**
@@ -26,19 +27,17 @@ class ArticleExporter
      */
     private $_media_collection_inline = [];
 
-    private $_media_collection_title = [];
-
     private $_articles_related = [];
 
     /**
      * @var array
      */
-    private $_article_media_title, $_article_media_html;
+    private $_article_media_title = [], $_article_media_html = [];
 
     /**
      * @var array
      */
-    private $_article_media_inline, $_article_media_reports;
+    private $_article_media_inline = [], $_article_media_reports = [];
 
     /**
      * ArticleExporter constructor.
@@ -46,44 +45,10 @@ class ArticleExporter
      * @param $id
      * @throws Exception
      */
-    public function __construct($id)
+    public function __construct()
     {
-        // загружаем список статей VIEW ALSO
         $this->_articles_related = $this->getRelatedArticles();
 
-        $this->prepareData();
-    }
-
-    /**
-     * Возвращает массив статей "по теме"
-     *
-     * @param $id
-     * @return array
-     * @throws Exception
-     */
-    private function getRelatedArticles()
-    {
-        return
-            DB::query("
-SELECT id, cdate, title FROM articles
-WHERE id IN (SELECT bind FROM articles_related WHERE item = {$this->id})
-ORDER BY cdate ")
-            ->fetchAll(PDO::FETCH_FUNC, function ($id, $cdate, $title) {
-                return [
-                    'id'    =>  (int)$id,
-                    'cdate' =>  self::_date_format($cdate),
-                    'title' =>  $title
-                ];
-            });
-    }
-
-    /**
-     * Подготавливает данные для экспорта
-     *
-     * @throws Exception
-     */
-    private function prepareData()
-    {
         $this->_article_media_title = $this->parseMediaTitle();
         $this->_article_media_html = $this->parseHTMLWidgets();
 
@@ -91,17 +56,17 @@ ORDER BY cdate ")
         $this->_article_media_reports = $this->parseMediaReports();
 
         $this->_dataset = [
-            'oldid'     =>  $this->id,                                     // id статьи
+            'id'        =>  (int)$this->id,                                     // id статьи
             'cdate'     =>  self::_date_format($this->cdate),     // ISO Date
             'type'      =>  $this->type,                                    // тип
             'creator'   =>  [                                               // информация об авторе
-                'id'        =>  $this->author_id,                           // ID
+                'id'        =>  (int)$this->author_id,                           // ID
                 'login'     =>  $this->author_login,                        // логин
                 'sign'      =>  self::_trim($this->author, 'TRIM.AUTHOR')                               // подпись
             ],
             'status'    =>  [                                               // статус статьи в базе
-                'is_hidden' =>  $this->s_hidden,                            // установлен флаг "скрытая"
-                'is_draft'  =>  $this->s_draft,                             // установлен флаг "черновик"
+                'is_hidden' =>  (int)$this->s_hidden,                            // установлен флаг "скрытая"
+                'is_draft'  =>  (int)$this->s_draft,                             // установлен флаг "черновик"
             ],
             'title'     =>  self::_trim($this->title, 'TRIM.TITLE'),
             'media'     =>  [
@@ -120,7 +85,6 @@ ORDER BY cdate ")
                 'title'     =>  $this->meta_title,
                 'keywords'  =>  $this->meta_keywords,
                 'description'=> $this->meta_descr,
-
             ],
             'relations' =>  [
                 'districts' =>  $this->exportArticleDistricts(),
@@ -128,7 +92,6 @@ ORDER BY cdate ")
                 'tags'      =>  $this->exportArticleTags()
             ]
         ];
-
 
 
     }
@@ -191,19 +154,12 @@ ORDER BY cdate ")
             if (array_key_exists('file', $u_photo)) {
                 $basepath = getenv('PATH.STORAGE') . 'photos/' . date('Y/m', strtotime($this->cdate)) . '/';
 
-                $_media_title['realfile']
-                    = is_file($basepath . $u_photo['file'])
-                    ? $basepath . $u_photo['file']
-                    : '';
+                self::_check_file($_media_title['realfile'], $basepath . $u_photo['file']);
             }
         }
 
         if (getenv('MEDIA.TITLE.EXPORT_RAW')) {
             $_media_title['raw'] = $u_photo;
-        }
-
-        if (getenv('MEDIA.TITLE.EXPORT_ALWAYS') == 0 && !$is_present) {
-            $_media_title = [];
         }
 
         return $_media_title;
@@ -216,8 +172,6 @@ ORDER BY cdate ")
      */
     private function parseMediaInline()
     {
-        $_data = [];
-
         $query = "
 SELECT
        af.id AS embed_id, 
@@ -236,11 +190,13 @@ WHERE af.item = {$this->id}
         ";
 
         $sth = DB::query($query);
+
+        $_data = [];
         $_data['_'] = 0;
 
         while ($resource = $sth->fetch()) {
+            $media_fid = (int)$resource['mediafile_id'];
             $media_type = $resource['media_type'];
-            $media_fid = $resource['mediafile_id'];
 
             $info_media = [
                 'fid'   =>  $media_fid,
@@ -252,7 +208,7 @@ WHERE af.item = {$this->id}
                 $info_media['raw'] = $resource;
             }
 
-            $_data[$resource['embed_id']] = $info_media;
+            $_data[ (int)$resource['embed_id'] ] = $info_media;
 
             $_data['_']++;
             unset($info_media);
@@ -274,31 +230,16 @@ WHERE af.item = {$this->id}
             $paths = [];
             switch ($media_type) {
                 case 'photos': {
-
                     self::_check_file($paths['preview'], $basepath . '650x486_' . $resource['mediafile_filename']);
                     self::_check_file($paths['full'], $basepath . '1280x1024_' . $resource['mediafile_filename']);
                     self::_check_file($paths['original'], $basepath . '' . $resource['mediafile_filename']);
-
-                    /*if (is_file($basepath . '650x486_' . $resource['mediafile_filename'])) {
-                        $paths['preview'] = $basepath . '650x486_' . $resource['mediafile_filename'];
-                    }
-
-                    if (is_file($basepath . '1280x1024_' . $resource['mediafile_filename'])) {
-                        $paths['full'] = $basepath . '1280x1024_' . $resource['mediafile_filename'];
-                    }
-
-                    if (is_file($basepath . '' . $resource['mediafile_filename'])) {
-                        $paths['original'] = $basepath . '' . $resource['mediafile_filename'];
-                    }*/
 
                     break;
                 }
                 case 'files':
                 case 'audios':
                 case 'videos': {
-                    if (is_file($basepath . $resource['mediafile_filename'])) {
-                        $paths['full'] = $basepath . $resource['mediafile_filename'];
-                    }
+                    self::_check_file($paths['full'], $basepath . $resource['mediafile_filename']);
 
                     break;
                 }
@@ -314,9 +255,6 @@ WHERE af.item = {$this->id}
             $_data = [];
 
         return $_data;
-
-
-
     }
 
     /**
@@ -555,7 +493,28 @@ ORDER BY ta.sort DESC
 
     }
 
-
+    /**
+     * Возвращает массив статей "по теме"
+     *
+     * @param $id
+     * @return array
+     * @throws Exception
+     */
+    private function getRelatedArticles()
+    {
+        return
+            DB::query("
+SELECT id, cdate, title FROM articles
+WHERE id IN (SELECT bind FROM articles_related WHERE item = {$this->id})
+ORDER BY cdate ")
+                ->fetchAll(PDO::FETCH_FUNC, function ($id, $cdate, $title) {
+                    return [
+                        'id'    =>  (int)$id,
+                        'cdate' =>  self::_date_format($cdate),
+                        'title' =>  $title
+                    ];
+                });
+    }
 
 
 }

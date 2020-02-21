@@ -1,4 +1,4 @@
-# --- Where: fontankafi migration tool @ whitegoldtower
+# --- Where: fontankafi migration tool @ anywhere example
 
 # DB #
 # Основная база данных (вы же понимаете, что это фейковыйе данные?)
@@ -7,22 +7,36 @@ DB_USERNAME         = ""
 DB_PASSWORD         = ""
 DB_DATABASE     = "fontankafi"
 
+# STORAGE
+
+PATH.STORAGE    = "/var/www/fontankafi.storage/"
+
+# EXPORT
+
+PATH.EXPORT     = "export/"
+
 # Настройки TRIM
 TRIM.AUTHOR = 1
 TRIM.TITLE = 1
 TRIM.LEAD = 1
 
+# Общие настройки экспорта
+MEDIA.EXPORT_ONLY_PRESENT_FILES = 0
+
 # Настройки экспорта MEDIA:Title
 MEDIA.TITLE.EXPORT_RAW = 0              # экспортировать сырые десериализованные данные
 MEDIA.TITLE.EXPORT_ALWAYS = 0           # 1: экспортировать даже если данные пусты, иначе вернуть []
+MEDIA.TITLE_EXPORT_TO_COLLECTION = 1       # экспортировать ли в коллекцию medias
 
 # Настройки экспорта HTML-виджетов
 MEDIA.HTML.EXPORT_STRING = 1
-MEDIA.HTML.EXPORT_BASE64 = 1
-MEDIA.HTML.EXPORT_RAW = 1
+MEDIA.HTML.EXPORT_BASE64 = 0
+MEDIA.HTML.EXPORT_RAW = 0
 MEDIA.HTML.SAVE_DEBUG = 0
 
-# Настройки экспорта MEDIA:media
-MEDIA.MEDIA.EXPORT_RAW = 1              # сохранять ли исходные сырые данные?
+# Настройки экспорта MEDIA:inline media
+MEDIA.MEDIA.EXPORT_RAW = 0              # сохранять ли исходные сырые данные?
+
+# Настройки эксплорта MEDIA:reports
 
 
