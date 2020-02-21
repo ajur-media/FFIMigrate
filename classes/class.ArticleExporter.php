@@ -234,7 +234,7 @@ WHERE af.item = {$this->id}
                     'source'    =>  $resource['media_source'],
                     'link'      =>  $resource['media_link'],
                 ],
-                'cdate'     =>  $resource['media_cdate'],
+                'cdate'     =>  FFIECommon::_date_format($resource['media_cdate']),
                 'original_name' =>  $resource['mediafile_originalfilename'],
                 'paths'     =>  []
             ];
