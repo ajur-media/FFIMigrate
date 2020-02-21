@@ -1,20 +1,9 @@
 <?php
 
+use Spatie\Regex\Regex;
 
 class FFIECommon
 {
-    public static $query_get_article = "
-SELECT
-	a.*,
-    adm.login AS author_login
-FROM 
-	articles AS a
-LEFT JOIN admin AS adm ON a.author_id = adm.id 	
-WHERE
-	a.id = :id
-";
-
-
     /**
      * Validate and create directory
      *
@@ -29,10 +18,15 @@ WHERE
         return true;
     }
 
+    /**
+     *
+     * @param $article
+     * @return string
+     */
     public static function getExportFilename($article)
     {
         $filename = '';
-        if (getenv('EXPORT.SEPARATE_BY_TYPE')) {
+        if (getenv('EXPORT.NAME_BY_TYPE') == 'directory') {
             if ($article['type'] === 'articles') {
                 $filename = getenv('PATH.EXPORT.ARTICLES') . DIRECTORY_SEPARATOR;
             } elseif ($article['type'] === "news") {
@@ -40,6 +34,8 @@ WHERE
             } else {
                 $filename = getenv('PATH.EXPORT.ALL') . DIRECTORY_SEPARATOR;
             }
+        } elseif (getenv('EXPORT.NAME_BY_TYPE') == 'file') {
+            $filename = getenv('PATH.EXPORT.ALL') . DIRECTORY_SEPARATOR . $article['type'] . '-';
         } else {
             $filename = getenv('PATH.EXPORT.ALL') . DIRECTORY_SEPARATOR . 'item-';
         }
@@ -48,9 +44,14 @@ WHERE
         return $filename;
     }
 
-    public static function exportJSON($filename, $article_export)
+    /**
+     * @param string $filename
+     * @param array $data
+     * @return false|int
+     */
+    public static function exportJSON($filename, $data)
     {
-        return file_put_contents($filename, json_encode($article_export, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
+        return file_put_contents($filename, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
     }
 
     /**
@@ -101,6 +102,27 @@ WHERE
     public static function _trim($value, $env)
     {
         return getenv($env) ? trim($value) : $value;
+    }
+
+    /**
+     *
+     * @param $html
+     * @return bool|string
+     * @throws \Spatie\Regex\RegexFailed
+     */
+    public static function checkExternalLink($html)
+    {
+        $pattern = '/\<meta\shttp-equiv="refresh"\scontent=";url=((https?):\/\/(-\.)?([^\s\/?\.#-]+\.?)+(\/[^\s]*)?)\"\>/';
+        /**
+         * @param \Spatie\Regex\MatchResult $match
+         */
+        $match = Regex::match($pattern, $html);
+
+        if ($match->hasMatch()) {
+            return $match->group(1);
+        }
+
+        return false;
     }
 
 }

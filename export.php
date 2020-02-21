@@ -37,7 +37,7 @@ try {
     // запрос
     // $select_query = "SELECT id FROM articles WHERE id IN (16108,19899,27927,29940,31181,31717,32441,33830,34591,34662,35442,36138,37384,38294) ORDER BY id";
     // $select_query = "SELECT id FROM articles  ORDER BY id LIMIT 1000";
-    $select_query = "SELECT id FROM articles  ORDER BY id";
+    $select_query = "SELECT id FROM articles WHERE s_hidden = 0 AND s_draft = 0 AND cdate IS NOT NULL ORDER BY id";
 
     // получаем список ID статей
     $articles_ids_list = DB::query($select_query)->fetchAll(PDO::FETCH_COLUMN);
@@ -46,6 +46,8 @@ try {
 
     $media_inline = []; // коллекция медиа-файлов в тексте
     $media_titles = []; // коллекция медиа-файлов в тайтле статьи
+
+    $items_list = [];   // список итемов
 
     // перебираем статьи
     foreach ($articles_ids_list as $id) {
@@ -89,16 +91,28 @@ WHERE
             " Item id = <font color='green'>{$id}</font> exported to file <font color='yellow'>{$filename}</font>";
 
         CLIConsole::say($message);
+
+        $items_list[ $article_id ] = [
+            'id'    =>  $article_id,
+            'type'  =>  $article_export['type'],
+            'title' =>  $article_export['content']['title'],
+            'json'  =>  $filename
+        ];
+
         unset($article);
     } // foreach article
 
-    CLIConsole::say("Exporting <font color='yellow'>{$export_directory}/media-inline.json</font>...");
+    CLIConsole::say("Exporting <font color='yellow'>{$export_directory}/list-media-inline.json</font>...");
     ksort($media_inline, SORT_NATURAL);
-    FFIECommon::exportJSON("{$export_directory}/media-inline.json", $media_inline);
+    FFIECommon::exportJSON("{$export_directory}/list-media-inline.json", $media_inline);
 
-    CLIConsole::say("Exporting <font color='yellow'>{$export_directory}/media-title.json</font>...");
+    CLIConsole::say("Exporting <font color='yellow'>{$export_directory}/list-media-title.json</font>...");
     ksort($media_titles, SORT_NATURAL);
-    FFIECommon::exportJSON("{$export_directory}/media-title.json", $media_titles);
+    FFIECommon::exportJSON("{$export_directory}/list-media-title.json", $media_titles);
+
+    CLIConsole::say("Exporting <font color='yellow'>{$export_directory}/list-items.json</font>");
+    ksort($items_list, SORT_NATURAL);
+    FFIECommon::exportJSON("{$export_directory}/list-items.json", $items_list);
 
     CLIConsole::say();
     CLIConsole::say("Memory consumed: " . memory_get_peak_usage());

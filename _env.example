@@ -15,7 +15,12 @@ PATH.STORAGE    = ""
 
 PATH.EXPORT.ALL         =   "_export"
 
-EXPORT.SEPARATE_BY_TYPE     = 1
+# Правила выбора имени экспортируемого итема - directory|file|none
+# directory - раскладываем по директориям
+# file - делаем префикс имени
+# other - префикс имени = `item` и кладём все в PATH.EXPORT.ALL
+EXPORT.NAME_BY_TYPE     = 'directory'
+
 PATH.EXPORT.ARTICLES        =   "_export/articles"
 PATH.EXPORT.NEWS            =   "_export/news"
 

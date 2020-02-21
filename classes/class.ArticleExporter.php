@@ -1,8 +1,7 @@
 <?php
 
 use Arris\DB;
-
-// require_once 'class.FFIECommon.php';
+use Spatie\Regex;
 
 class ArticleExporter
 {
@@ -40,6 +39,12 @@ class ArticleExporter
      * @var array
      */
     private $_article_media_inline = [], $_article_media_reports = [];
+
+    /**
+     * @var mixed  - Признак того, что итем содержал JS-код перехода на внешний материал
+     * FALSE или СТРОКА
+     */
+    private $is_external = false;
 
     /**
      * ArticleExporter constructor.
@@ -100,7 +105,9 @@ class ArticleExporter
             ]
         ];
 
-
+        if ($this->is_external !== false) {
+            $this->_dataset['content']['external'] = $this->is_external;
+        }
     }
 
     /**
@@ -285,6 +292,8 @@ WHERE id IN (
 ) ORDER BY id 
         ")->fetchAll();
 
+        $_reports['_'] = 0;
+
         foreach ($fetch_data as $report) {
             $rid = (int)$report['id'];
             $report['id'] = $rid;
@@ -339,7 +348,9 @@ WHERE rf.item = {$rid}
 
             // дополняем $report данными из files по связи report_files
             $_reports[ $rid ] = $report;
+            $_reports['_']++;
         }
+        if ($_reports['_'] == 0) unset($_reports['_']);
 
         return $_reports;
 
@@ -373,6 +384,13 @@ WHERE rf.item = {$rid}
         $_data['_'] = count($html);
 
         foreach ($html as $id => $code) {
+            // проверяем [noindex canonical redirect -> longread]
+            $is_external_href = FFIECommon::checkExternalLink($code);
+
+            if ($is_external_href !== false) {
+                $this->is_external = $is_external_href;
+            }
+
             $set = [];
 
             if (getenv('MEDIA.HTML.EXPORT_STRING'))
@@ -392,30 +410,46 @@ WHERE rf.item = {$rid}
     }
 
     /**
-     * Десериализует список рубрик
+     * Экспортирует список рубрик
      *
      * @return array
+     * @throws Exception
      */
     private function exportArticleRubrics()
     {
-        $rubrics = @unserialize($this->rubrics);
+        /*$rubrics = @unserialize($this->rubrics);
         $data = [];
         if (is_array($rubrics)) {
             foreach ($rubrics as $id => $r) {
                 $data[ (int)$id ] = $r['name'];
             }
         }
-        return $data;
+        return $data;*/
+        $id = $this->id;
+        $query = "SELECT 
+    ra.id AS rubric_id,
+    ra.name AS rubric_name,
+    ra.sort AS rubric_order
+FROM 
+     articles_rubrics AS ar
+LEFT JOIN rubrics_articles AS ra ON ra.id = ar.bind
+WHERE item = {$id}
+ORDER BY ra.sort DESC  ";
+
+        $data = DB::query($query)->fetchAll();
+        return $data === false ? [] : $data;
+
     }
 
     /**
-     * Десериализует список районов
+     * Экспортирует список районов без десериализации, из базы
      *
      * @return array
+     * @throws Exception
      */
     private function exportArticleDistricts()
     {
-        $districs = @unserialize($this->districts);
+        /*$districs = @unserialize($this->districts);
         $data = [];
         if (is_array($districs)) {
             $this->districts = [];
@@ -424,6 +458,18 @@ WHERE rf.item = {$rid}
             }
         }
         return $data;
+        */
+        $id = $this->id;
+        $query = "SELECT 
+    d.id AS district_id,
+    d.name AS district_name
+FROM 
+     articles_districts AS ad
+LEFT JOIN districts AS d ON d.id = ad.bind
+WHERE item = {$id}";
+
+        $data = DB::query($query)->fetchAll();
+        return $data === false ? [] : $data;
     }
 
     /**
