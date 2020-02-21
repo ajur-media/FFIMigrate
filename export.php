@@ -22,7 +22,7 @@ AppLogger::addScope('main', [
 try {
     $export_directory = getenv('PATH.EXPORT.ALL');
     FFIECommon::checkDirectory(__DIR__ . DIRECTORY_SEPARATOR . getenv('PATH.EXPORT.ALL'));
-    if (getenv('EXPORT.SEPARATE_BY_TYPE')) {
+    if (getenv('EXPORT.NAME_BY_TYPE') == 'directory') {
         FFIECommon::checkDirectory(__DIR__ . DIRECTORY_SEPARATOR . getenv('PATH.EXPORT.ARTICLES'));
         FFIECommon::checkDirectory(__DIR__ . DIRECTORY_SEPARATOR . getenv('PATH.EXPORT.NEWS'));
     }
