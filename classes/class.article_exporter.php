@@ -1,7 +1,6 @@
 <?php
 
 use Arris\DB;
-use Spatie\Regex\Regex;
 
 class ArticleExporter
 {
@@ -42,7 +41,6 @@ class ArticleExporter
     /**
      * ArticleExporter constructor.
      *
-     * @param $id
      * @throws Exception
      */
     public function __construct()
@@ -427,7 +425,6 @@ WHERE rf.item = {$rid}
      */
     private function exportArticleTags()
     {
-        $data = [];
         $id = $this->id;
 
         $query = "
@@ -496,7 +493,6 @@ ORDER BY ta.sort DESC
     /**
      * Возвращает массив статей "по теме"
      *
-     * @param $id
      * @return array
      * @throws Exception
      */
