@@ -1,6 +1,7 @@
 .idea
 vendor
-export
-export/*
+_export
+_export/*
+
 composer.lock
 _env

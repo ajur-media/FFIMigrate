@@ -1,4 +1,4 @@
-# --- Where: fontankafi migration tool @ anywhere example
+# --- Where: fontankafi migration tool @ whitegoldtower
 
 # DB #
 # Основная база данных (вы же понимаете, что это фейковыйе данные?)
@@ -7,13 +7,13 @@ DB_USERNAME         = ""
 DB_PASSWORD         = ""
 DB_DATABASE     = "fontankafi"
 
-# STORAGE
+# path to storage (with tailing slash)
 
-PATH.STORAGE    = "/var/www/fontankafi.storage/"
+PATH.STORAGE    = ""
 
-# EXPORT
+# Export directory (without tailing slash) from current
 
-PATH.EXPORT     = "export/"
+PATH.EXPORT_DIR = "_export"
 
 # Настройки TRIM
 TRIM.AUTHOR = 1
