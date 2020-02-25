@@ -9,7 +9,8 @@ use Monolog\Logger;
 use Dotenv\Dotenv;
 
 require_once __DIR__ . '/vendor/autoload.php';
-require_once __DIR__ . '/classes/class.ArticleExporter.php';
+require_once __DIR__ . '/classes/class.ExportArticle.php';
+require_once __DIR__ . '/classes/class.ExportPage.php';
 require_once __DIR__ . '/classes/class.FFIECommon.php';
 
 Dotenv::create(__DIR__, '_env')->load();
@@ -25,6 +26,7 @@ try {
     if (getenv('EXPORT.NAME_BY_TYPE') == 'directory') {
         FFIECommon::checkDirectory(__DIR__ . DIRECTORY_SEPARATOR . getenv('PATH.EXPORT.ARTICLES'));
         FFIECommon::checkDirectory(__DIR__ . DIRECTORY_SEPARATOR . getenv('PATH.EXPORT.NEWS'));
+        FFIECommon::checkDirectory(__DIR__ . DIRECTORY_SEPARATOR . getenv('PATH.EXPORT.PAGES'));
     }
 
     DB::init(NULL, [
@@ -37,7 +39,7 @@ try {
     // запрос
     // $select_query = "SELECT id FROM articles WHERE id IN (16108,19899,27927,29940,31181,31717,32441,33830,34591,34662,35442,36138,37384,38294) ORDER BY id";
     // $select_query = "SELECT id FROM articles  ORDER BY id LIMIT 1000";
-    $select_query = "SELECT id FROM articles WHERE s_hidden = 0 AND s_draft = 0 AND cdate IS NOT NULL ORDER BY id";
+    $select_query = "SELECT id FROM articles WHERE s_hidden = 0 AND s_draft = 0 AND cdate IS NOT NULL ORDER BY id LIMIT 100";
 
     // получаем список ID статей
     $articles_ids_list = DB::query($select_query)->fetchAll(PDO::FETCH_COLUMN);
@@ -48,26 +50,20 @@ try {
     $media_titles = []; // коллекция медиа-файлов в тайтле статьи
 
     $items_list = [];   // список итемов
+    $pages_list = [];
+
+    $sth_articles = DB::C()->prepare(ExportArticle::sql_query_get_article_by_id);
 
     // перебираем статьи
     foreach ($articles_ids_list as $id) {
         $count_curr++;
 
-        $query_get_article = "
-SELECT
-	a.*,
-    adm.login AS author_login
-FROM 
-	articles AS a
-LEFT JOIN admin AS adm ON a.author_id = adm.id 	
-WHERE
-	a.id = {$id}
-";
-        /**
-         * @param ArticleExporter $article
-         */
-        $article = DB::query($query_get_article)->fetchObject('ArticleExporter');
+        $sth_articles->execute(['id' => $id]);
+        $article = $sth_articles->fetchObject(ExportArticle::class);
 
+        /**
+         * @var $article ExportArticle
+         */
         $article_export = $article->exportArticle();
         $article_id = $article_export['id'];
 
@@ -81,7 +77,7 @@ WHERE
         $media_titles[ $article_id ] = $article->exportTitleMediaCollection();
 
         // генерируем имя файла для записи
-        $filename = FFIECommon::getExportFilename($article_export);
+        $filename = FFIECommon::getExportFilename($article_export, 5);
         FFIECommon::exportJSON($filename, $article_export);
 
         // сообщение
@@ -102,17 +98,54 @@ WHERE
         unset($article);
     } // foreach article
 
-    CLIConsole::say("Exporting <font color='yellow'>{$export_directory}/list-media-inline.json</font>...");
-    ksort($media_inline, SORT_NATURAL);
-    FFIECommon::exportJSON("{$export_directory}/list-media-inline.json", $media_inline);
+    // перебираем страницы
+    $sth_pages = DB::C()->query(ExportPage::sql_query_get_pages_all);
+    /**
+     * @var ExportPage $a_page
+     */
+    while ($a_page = $sth_pages->fetchObject(ExportPage::class)) {
+        $export = $a_page->export();
 
-    CLIConsole::say("Exporting <font color='yellow'>{$export_directory}/list-media-title.json</font>...");
+        foreach ($a_page->exportInlineMediaCollection() as $fid => $finfo) {
+            $media_inline[ $fid ] = $finfo;
+        }
+
+        $filename = FFIECommon::getExportFilename($export, -1);
+        FFIECommon::exportJSON($filename, $export);
+
+        $pages_list[ $export['id'] ] = [
+            'id'    =>  $export['id'],
+            'type'  =>  'page',
+            'title' =>  $export['content']['title'],
+            'json'  =>  $filename
+        ];
+
+        // сообщение
+        $message
+            = "[ Page id = <font color='green'>"
+            . str_pad($export['id'], 6, ' ', STR_PAD_LEFT)
+            . "</font>] exported to file <font color='yellow'>{$filename}</font>";
+
+        CLIConsole::say($message);
+
+        unset($a_page);
+    }
+
+    CLIConsole::say("Exporting <font color='yellow'>{$export_directory}/dictionary-media-inline.json</font>...");
+    ksort($media_inline, SORT_NATURAL);
+    FFIECommon::exportJSON("{$export_directory}/dictionary-media-inline.json", $media_inline);
+
+    CLIConsole::say("Exporting <font color='yellow'>{$export_directory}/dictionary-media-title.json</font>...");
     ksort($media_titles, SORT_NATURAL);
-    FFIECommon::exportJSON("{$export_directory}/list-media-title.json", $media_titles);
+    FFIECommon::exportJSON("{$export_directory}/dictionary-media-title.json", $media_titles);
 
     CLIConsole::say("Exporting <font color='yellow'>{$export_directory}/list-items.json</font>");
     ksort($items_list, SORT_NATURAL);
     FFIECommon::exportJSON("{$export_directory}/list-items.json", $items_list);
+
+    CLIConsole::say("Exporting <font color='yellow'>{$export_directory}/list-pages.json</font>");
+    ksort($pages_list, SORT_NATURAL);
+    FFIECommon::exportJSON("{$export_directory}/list-pages.json", $pages_list);
 
     CLIConsole::say();
     CLIConsole::say("Memory consumed: " . memory_get_peak_usage());

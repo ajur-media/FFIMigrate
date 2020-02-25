@@ -20,28 +20,36 @@ class FFIECommon
 
     /**
      *
-     * @param $article
+     * @param array $item
+     * @param int $pad = 5
      * @return string
      */
-    public static function getExportFilename($article)
+    public static function getExportFilename($item, $pad = 5)
     {
         $filename = '';
         if (getenv('EXPORT.NAME_BY_TYPE') == 'directory') {
-            if ($article['type'] === 'articles') {
+            if ($item['type'] === 'articles') {
                 $filename = getenv('PATH.EXPORT.ARTICLES') . DIRECTORY_SEPARATOR;
-            } elseif ($article['type'] === "news") {
+            } elseif ($item['type'] === "news") {
                 $filename = getenv('PATH.EXPORT.NEWS') . DIRECTORY_SEPARATOR;
+            } elseif ($item['type'] === 'page') {
+                $filename = getenv('PATH.EXPORT.PAGES') . DIRECTORY_SEPARATOR;
             } else {
                 $filename = getenv('PATH.EXPORT.ALL') . DIRECTORY_SEPARATOR;
             }
         } elseif (getenv('EXPORT.NAME_BY_TYPE') == 'file') {
-            $filename = getenv('PATH.EXPORT.ALL') . DIRECTORY_SEPARATOR . $article['type'] . '-';
+            $filename = getenv('PATH.EXPORT.ALL') . DIRECTORY_SEPARATOR . $item['type'] . '-';
         } else {
             $filename = getenv('PATH.EXPORT.ALL') . DIRECTORY_SEPARATOR . 'item-';
         }
-        $filename .= str_pad($article['id'], 5, '0', STR_PAD_LEFT) . '.json';
+        $filename .= str_pad($item['id'], $pad, '0', STR_PAD_LEFT) . '.json';
 
         return $filename;
+    }
+
+    public static function getExportFilenamePage($page)
+    {
+        return getenv('PATH.EXPORT.ALL') . DIRECTORY_SEPARATOR . 'page-' . $page['id'] . '.json';
     }
 
     /**

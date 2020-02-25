@@ -3,8 +3,19 @@
 use Arris\DB;
 use Spatie\Regex;
 
-class ArticleExporter
+class ExportArticle
 {
+    const sql_query_get_article_by_id = "
+SELECT
+	a.*,
+    adm.login AS author_login
+FROM 
+	articles AS a
+LEFT JOIN admin AS adm ON a.author_id = adm.id 	
+WHERE
+	a.id = :id
+";
+
     /*
      * Autoloaded fields
      */
