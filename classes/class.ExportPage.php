@@ -151,11 +151,6 @@ WHERE pf.item = {$this->id}
                 $info_media['raw'] = $resource;
             }
 
-            $_data[ (int)$resource['embed_id'] ] = $info_media;
-
-            $_data['_']++;
-            unset($info_media);
-
             $info_file = [
                 'fid'       =>  $media_fid,
                 'type'      =>  $media_type,
@@ -190,7 +185,15 @@ WHERE pf.item = {$this->id}
             } // switch
             $info_file['paths'] = $paths;
 
+            $info_media['file'] = $info_file;
+
+            $_data[ (int)$resource['embed_id'] ] = $info_media;
+
+            $_data['_']++;
+
             $this->_media_collection_inline[ $media_fid ] = $info_file;
+
+            unset($info_media);
         }
 
         // Если медиаданных этого типа нет - возвращаем пустой массив

@@ -227,16 +227,12 @@ WHERE af.item = {$this->id}
                 'fid'   =>  $media_fid,
                 'type'  =>  $media_type,
                 'descr' =>  $resource['media_description'],
+                // по требованию Лёши передаем в инфомедиа всю информацию
             ];
 
             if (getenv('MEDIA.MEDIA.EXPORT_RAW')) {
                 $info_media['raw'] = $resource;
             }
-
-            $_data[ (int)$resource['embed_id'] ] = $info_media;
-
-            $_data['_']++;
-            unset($info_media);
 
             $info_file = [
                 'fid'       =>  $media_fid,
@@ -272,6 +268,13 @@ WHERE af.item = {$this->id}
             } // switch
             $info_file['paths'] = $paths;
 
+            // по просьбе Лёши передаем инфо о файле прямо тут
+            $info_media['file'] = $info_file;
+
+            $_data[ (int)$resource['embed_id'] ] = $info_media;
+            $_data['_']++;
+            unset($info_media);
+
             $this->_media_collection_inline[ $media_fid ] = $info_file;
         }
 
@@ -303,7 +306,7 @@ WHERE id IN (
 ) ORDER BY id 
         ")->fetchAll();
 
-        $_reports['_'] = 0;
+        // $_reports['_'] = 0;
 
         foreach ($fetch_data as $report) {
             $rid = (int)$report['id'];
@@ -333,9 +336,10 @@ WHERE rf.item = {$rid}
             // а создавать отдельный класс для экспорта (и писать PDO::FETCH_OBJ, "export_report_files" - излишество.
             // поэтому обработку просто выносим наружу, в foreach
 
-            $report['media'] = [
+            // по просьбе Лёши отдаем как линейный массив без счетчика элементов
+            /*$report['media'] = [
                 '_' =>  count($photoreport_files)
-            ];
+            ];*/
 
             foreach ($photoreport_files as $rf) {
                 $fid = (int)$rf['mediafile_id'];
@@ -354,12 +358,14 @@ WHERE rf.item = {$rid}
 
                 $rf['paths'] = $paths;
 
-                $report['media'][$fid] = $rf;
+                // по просьбе Лёши отдаем как линейный массив без счетчика элементов (закомментируем индекс)
+                $report['media'][/*$fid*/] = $rf;
             } // each photoreport
 
             // дополняем $report данными из files по связи report_files
             $_reports[ $rid ] = $report;
             $_reports['_']++;
+            // по просьбе Лёши передаем просто линейный массив
         }
         if ($_reports['_'] == 0) unset($_reports['_']);
 
