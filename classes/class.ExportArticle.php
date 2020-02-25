@@ -306,7 +306,7 @@ WHERE id IN (
 ) ORDER BY id 
         ")->fetchAll();
 
-        // $_reports['_'] = 0;
+        $_reports['_'] = 0;
 
         foreach ($fetch_data as $report) {
             $rid = (int)$report['id'];
@@ -337,9 +337,9 @@ WHERE rf.item = {$rid}
             // поэтому обработку просто выносим наружу, в foreach
 
             // по просьбе Лёши отдаем как линейный массив без счетчика элементов
-            /*$report['media'] = [
+            $report['media'] = [
                 '_' =>  count($photoreport_files)
-            ];*/
+            ];
 
             foreach ($photoreport_files as $rf) {
                 $fid = (int)$rf['mediafile_id'];
