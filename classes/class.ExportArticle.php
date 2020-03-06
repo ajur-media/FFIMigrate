@@ -8,7 +8,8 @@ class ExportArticle
     const sql_query_get_article_by_id = "
 SELECT
 	a.*,
-    adm.login AS author_login
+    adm.login AS adm_author_login, 
+    adm.id as adm_author_id
 FROM 
 	articles AS a
 LEFT JOIN admin AS adm ON a.author_id = adm.id 	
@@ -21,7 +22,8 @@ WHERE
      */
     private
         $id, $cdate, $type,
-        $author, $author_id, $author_login,
+        $author, $author_id,
+        $adm_author_login, $adm_author_id,
         $s_hidden, $s_draft,
         $title, $short, $text_bb,
         $districts, $rubrics,
@@ -78,7 +80,8 @@ WHERE
             'type'      =>  $this->type,                                    // тип
             'creator'   =>  [                                               // информация об авторе
                 'id'        =>  (int)$this->author_id,                           // ID
-                'login'     =>  $this->author_login,                        // логин
+                'adm_id'    =>  $this->adm_author_id,
+                'adm_login' =>  $this->adm_author_login,                        // логин
                 'sign'      =>  FFIECommon::_trim($this->author, 'TRIM.AUTHOR')                               // подпись
             ],
             'status'    =>  [                                               // статус статьи в базе
@@ -336,10 +339,18 @@ WHERE rf.item = {$rid}
             // а создавать отдельный класс для экспорта (и писать PDO::FETCH_OBJ, "export_report_files" - излишество.
             // поэтому обработку просто выносим наружу, в foreach
 
-            // по просьбе Лёши отдаем как линейный массив без счетчика элементов
-            $report['media'] = [
+            // Фотографии в фоторепортаже упорядочены, и порядок имеет значение.
+            // Из-за особенностей PERL-а в трактовании json-структур типа {}
+            // мы передаем фотографии не как ассоциативный массив, а как линейный массив, в котором фото перечислены \
+            // по порядку, а не по ключам.
+            // поэтому оставляем в массиве только однозначно приводящиеся к числам ключи, не добавляем ключ '_' (число фоток)
+            //
+            //@todo: env?
+            /*$report['media'] = [
                 '_' =>  count($photoreport_files)
-            ];
+            ];*/
+
+            // порядок фоток внутри фоторепортажа существенен
 
             foreach ($photoreport_files as $rf) {
                 $fid = (int)$rf['mediafile_id'];
