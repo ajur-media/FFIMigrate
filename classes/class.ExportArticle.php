@@ -169,20 +169,21 @@ WHERE
         $is_present = false;
 
         if (!empty($u_photo) && is_array($u_photo)) {
-            if (array_key_exists('file', $u_photo) && array_key_exists('path', $u_photo)) {
-                $_media_title['uri'] = stripslashes($u_photo['path']) . '/' . $u_photo['file'];
 
+            if (array_key_exists('file', $u_photo) && array_key_exists('path', $u_photo)) {
+
+                FFIECommon::_check_file($_media_title['uri'], stripslashes($u_photo['path']) . '/' . $u_photo['file']);
+                $is_present = true;
+
+            } elseif (array_key_exists('file', $u_photo) && array_key_exists('cdate', $u_photo) ) {
+
+                $basepath = getenv('PATH.STORAGE') . 'photos/' . $u_photo['cdate'] . '/';
+                FFIECommon::_check_file($_media_title['predicted'], $basepath . $u_photo['file']);
                 $is_present = true;
             }
 
             if ($is_present && array_key_exists('descr', $u_photo)) {
                 $_media_title['titles'] = $u_photo['descr'];
-            }
-
-            if (array_key_exists('file', $u_photo)) {
-                $basepath = getenv('PATH.STORAGE') . 'photos/' . date('Y/m', strtotime($this->cdate)) . '/';
-
-                FFIECommon::_check_file($_media_title['realfile'], $basepath . $u_photo['file']);
             }
         }
 
