@@ -170,12 +170,12 @@ WHERE
 
         if (!empty($u_photo) && is_array($u_photo)) {
 
-            if (array_key_exists('file', $u_photo) && array_key_exists('path', $u_photo)) {
+            if (array_key_exists('file', $u_photo) && array_key_exists('path', $u_photo) && $u_photo['file'] && $u_photo['path']) {
 
                 FFIECommon::_check_file($_media_title['uri'], stripslashes($u_photo['path']) . '/' . $u_photo['file']);
                 $is_present = true;
 
-            } elseif (array_key_exists('file', $u_photo) && array_key_exists('cdate', $u_photo) ) {
+            } elseif (array_key_exists('file', $u_photo) && array_key_exists('cdate', $u_photo) && $u_photo['file'] && $u_photo['cdate']) {
 
                 $basepath = getenv('PATH.STORAGE') . 'photos/' . $u_photo['cdate'] . '/';
                 FFIECommon::_check_file($_media_title['predicted'], $basepath . $u_photo['file']);
