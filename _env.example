@@ -19,10 +19,12 @@ PATH.EXPORT.ALL         =   "_export"
 # directory - раскладываем по директориям
 # file - делаем префикс имени
 # other - префикс имени = `item` и кладём все в PATH.EXPORT.ALL
+
 EXPORT.NAME_BY_TYPE     = 'directory'
 
 PATH.EXPORT.ARTICLES        =   "_export/articles"
 PATH.EXPORT.NEWS            =   "_export/news"
+PATH.EXPORT.PAGES           =   "_export/pages"
 
 # Настройки TRIM
 TRIM.AUTHOR = 1
@@ -30,8 +32,7 @@ TRIM.TITLE = 1
 TRIM.LEAD = 1
 
 # Общие настройки экспорта
-EXPORT.MEDIA.ONLY_PRESENT_FILES = 0
-
+EXPORT.MEDIA.ONLY_PRESENT_FILES = 1
 
 # Настройки экспорта MEDIA:Title
 MEDIA.TITLE.EXPORT_RAW = 0              # экспортировать сырые десериализованные данные
@@ -47,6 +48,5 @@ MEDIA.HTML.SAVE_DEBUG = 0
 # Настройки экспорта MEDIA:inline media
 MEDIA.MEDIA.EXPORT_RAW = 0              # сохранять ли исходные сырые данные?
 
-# Настройки эксплорта MEDIA:reports
 
 

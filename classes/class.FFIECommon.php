@@ -77,6 +77,7 @@ class FFIECommon
      * Проверяет существование файла и если он существует - записывает его в соотв поле target
      * @param $target
      * @param $filepath
+     * @return string
      */
     public static function _check_file(&$target, $filepath)
     {
@@ -87,7 +88,28 @@ class FFIECommon
         } else {
             $target = $filepath;
         }
+        return $filepath;
+    }
 
+    public static function _is_file_present($filepath)
+    {
+        return
+                getenv('EXPORT.MEDIA.ONLY_PRESENT_FILES')
+                ? is_file($filepath)
+                : true;
+    }
+
+    public static function _get_file_info(&$target, $filename, $path_storage, $path_full)
+    {
+        if (self::_is_file_present($path_full . $filename)) {
+            $target = [
+                'file'  =>  $path_storage . $filename,
+                'size'  =>  filesize($path_full . $filename),
+                'mime'  =>  mime_content_type($path_full . $filename)
+            ];
+            return true;
+        }
+        return false;
     }
 
     /**

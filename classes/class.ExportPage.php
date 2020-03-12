@@ -160,24 +160,46 @@ WHERE pf.item = {$this->id}
                 ],
                 'cdate'     =>  FFIECommon::_date_format($resource['media_cdate']),
                 'original_name' =>  $resource['mediafile_originalfilename'],
-                'paths'     =>  []
             ];
 
-            $basepath = getenv('PATH.STORAGE') . $media_type . '/' . date('Y/m', strtotime($resource['media_cdate'])) . '/';
+            $basepath_storage = $media_type . '/' . date('Y/m', strtotime($resource['media_cdate'])) . '/';
+            $basepath_full = getenv('PATH.STORAGE') . $basepath_storage;
 
             $paths = [];
             switch ($media_type) {
                 case 'photos': {
-                    FFIECommon::_check_file($paths['preview'], $basepath . '650x486_' . $resource['mediafile_filename']);
-                    FFIECommon::_check_file($paths['full'], $basepath . '1280x1024_' . $resource['mediafile_filename']);
-                    FFIECommon::_check_file($paths['original'], $basepath . '' . $resource['mediafile_filename']);
+                    $fn_preview     = '650x486_' . $resource['mediafile_filename'];
+                    $fn_full        = '1280x1024_' . $resource['mediafile_filename'];
+                    $fn_original    = $resource['mediafile_filename'];
+
+                    FFIECommon::_get_file_info($info_file['preview'], $fn_preview, $basepath_storage, $basepath_full);
+                    FFIECommon::_get_file_info($info_file['full'], $fn_full, $basepath_storage, $basepath_full);
+                    FFIECommon::_get_file_info($info_file['original'], $fn_original, $basepath_storage, $basepath_full);
+
+                    /*
+                    if (FFIECommon::_is_file_present($basepath_full . '650x486_' . $resource['mediafile_filename'])) {
+                        $paths['preview'] = $basepath_storage . '650x486_' . $resource['mediafile_filename'];
+                    }
+
+                    if (FFIECommon::_is_file_present($basepath_full . '1280x1024_' . $resource['mediafile_filename'])) {
+                        $paths['full'] = $basepath_storage . '1280x1024_' . $resource['mediafile_filename'];
+                    }
+
+                    if (FFIECommon::_is_file_present($basepath_full . $resource['mediafile_filename'])) {
+                        $paths['original'] = $basepath_storage . $resource['mediafile_filename'];
+                    }*/
 
                     break;
                 }
                 case 'files':
                 case 'audios':
                 case 'videos': {
-                    FFIECommon::_check_file($paths['full'], $basepath . $resource['mediafile_filename']);
+                    $fn_full = $resource['mediafile_filename'];
+                    FFIECommon::_get_file_info($info_file['full'], $fn_full, $basepath_storage, $basepath_full);
+
+                    /*if (FFIECommon::_is_file_present($basepath_full . $resource['mediafile_filename'])) {
+                        $paths['full'] = $basepath_storage . $resource['mediafile_filename'];
+                    }*/
 
                     break;
                 }

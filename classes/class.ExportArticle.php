@@ -164,35 +164,54 @@ WHERE
     {
         $u_photo = ($this->photo != '') ? @unserialize($this->photo) : [];
 
-        $_media_title = [];
+        $_media_title = [
+            '_'     =>  'not_found'
+        ];
 
         $is_present = false;
 
         if (!empty($u_photo) && is_array($u_photo)) {
+            $_file = array_key_exists('file', $u_photo) ? stripslashes($u_photo['file']) : null;
+            $_path = array_key_exists('path', $u_photo) ? stripslashes($u_photo['path']) : null;
+            $_cdate = array_key_exists('cdate', $u_photo) ? $u_photo['cdate'] : null;
+            $_descr = array_key_exists('descr', $u_photo) ? $u_photo['descr'] : null;
 
-            if (array_key_exists('file', $u_photo) && array_key_exists('path', $u_photo) && $u_photo['file'] && $u_photo['path']) {
+            if ($_file && $_path) {
+                $_storage_filepath = getenv('PATH.STORAGE') . $_path;
 
-                $basepath = getenv('PATH.STORAGE') . stripslashes($u_photo['path']) . '/';
+                if (FFIECommon::_is_file_present($_storage_filepath . '/' . $_file)) {
+                    $_media_title = [
+                        '_'     =>  'path/file',
+                        'uri'   =>  $_path . '/' . $_file,
+                        'size'  =>  filesize($_storage_filepath . '/' . $_file),
+                        'mime'  =>  mime_content_type($_storage_filepath . '/' . $_file)
+                    ];
 
-                FFIECommon::_check_file($_media_title['uri'],  $basepath. $u_photo['file']);
+                    $is_present = true;
+                }
 
-                $is_present = true;
+            } elseif ($_file && $_cdate) {
+                $_storage_filepath = getenv('PATH.STORAGE') . 'photos/' . date('Y/m', strtotime($_cdate));
 
-            } elseif (array_key_exists('file', $u_photo) && array_key_exists('cdate', $u_photo) && $u_photo['file'] && $u_photo['cdate']) {
+                if (FFIECommon::_is_file_present($_storage_filepath . '/' . $_file)) {
+                    $_media_title = [
+                        '_'     =>  'path/cdate',
+                        'uri'   =>  'photos/' . date('Y/m', strtotime($_cdate)) . '/' . $_file,
+                        'size'  =>  filesize($_storage_filepath . '/' . $_file),
+                        'mime'  =>  mime_content_type($_storage_filepath . '/' . $_file)
+                    ];
 
-                $basepath = getenv('PATH.STORAGE') . 'photos/' . date('Y/m/', strtotime($u_photo['cdate']));
-
-                FFIECommon::_check_file($_media_title['predicted'], $basepath . $u_photo['file']);
-
-                $is_present = true;
+                    $is_present = true;
+                }
             }
 
-            if ($is_present && array_key_exists('descr', $u_photo)) {
+            if ($is_present && $_descr) {
                 $_media_title['titles'] = $u_photo['descr'];
             }
+
         }
 
-        if (getenv('MEDIA.TITLE.EXPORT_RAW')) {
+        if (getenv('MEDIA.TITLE.EXPORT_RAW') && $u_photo) {
             $_media_title['raw'] = $u_photo;
         }
 
@@ -236,7 +255,6 @@ WHERE af.item = {$this->id}
                 'fid'   =>  $media_fid,
                 'type'  =>  $media_type,
                 'descr' =>  $resource['media_description'],
-                // по требованию Лёши передаем в инфомедиа всю информацию
             ];
 
             if (getenv('MEDIA.MEDIA.EXPORT_RAW')) {
@@ -252,30 +270,69 @@ WHERE af.item = {$this->id}
                 ],
                 'cdate'     =>  FFIECommon::_date_format($resource['media_cdate']),
                 'original_name' =>  $resource['mediafile_originalfilename'],
-                'paths'     =>  []
             ];
 
-            $basepath = getenv('PATH.STORAGE') . $media_type . '/' . date('Y/m', strtotime($resource['media_cdate'])) . '/';
+            $basepath_storage = $media_type . '/' . date('Y/m', strtotime($resource['media_cdate'])) . '/';
+            $basepath_full = getenv('PATH.STORAGE') . $basepath_storage;
 
             $paths = [];
+            $storage = [];
             switch ($media_type) {
                 case 'photos': {
-                    FFIECommon::_check_file($paths['preview'], $basepath . '650x486_' . $resource['mediafile_filename']);
-                    FFIECommon::_check_file($paths['full'], $basepath . '1280x1024_' . $resource['mediafile_filename']);
-                    FFIECommon::_check_file($paths['original'], $basepath . '' . $resource['mediafile_filename']);
+                    $fn_preview     = '650x486_' . $resource['mediafile_filename'];
+                    $fn_full        = '1280x1024_' . $resource['mediafile_filename'];
+                    $fn_original    = $resource['mediafile_filename'];
+
+                    FFIECommon::_get_file_info($info_file['preview'], $fn_preview, $basepath_storage, $basepath_full);
+                    FFIECommon::_get_file_info($info_file['full'], $fn_full, $basepath_storage, $basepath_full);
+                    FFIECommon::_get_file_info($info_file['original'], $fn_original, $basepath_storage, $basepath_full);
+
+                    /*if (FFIECommon::_is_file_present($basepath_full . $fn_preview)) {
+                        $storage['preview'] = [
+                            'file'  =>  $basepath_storage . $fn_preview,
+                            'size'  =>  filesize($basepath_full . $fn_preview),
+                            'mime'  =>  mime_content_type($basepath_full . $fn_preview)
+                        ];
+                    }
+
+                    if (FFIECommon::_is_file_present($basepath_full . $fn_full)) {
+                        $storage['full'] = [
+                            'file'  =>  $basepath_storage . $fn_full,
+                            'size'  =>  filesize($basepath_full . $fn_full),
+                            'mime'  =>  mime_content_type($basepath_full . $fn_full)
+                        ];
+                    }
+
+                    if (FFIECommon::_is_file_present($basepath_full . $fn_original)) {
+                        $storage['original'] = [
+                            'file'  =>  $basepath_storage . $fn_original,
+                            'size'  =>  filesize($basepath_full . $fn_original),
+                            'mime'  =>  mime_content_type($basepath_full . $fn_original)
+                        ];
+                    }*/
 
                     break;
                 }
                 case 'files':
                 case 'audios':
                 case 'videos': {
-                FFIECommon::_check_file($paths['full'], $basepath . $resource['mediafile_filename']);
+                    $fn_full = $resource['mediafile_filename'];
+
+                    FFIECommon::_get_file_info($info_file['full'], $fn_full, $basepath_storage, $basepath_full);
+
+                    /*if (FFIECommon::_is_file_present($basepath_full . $resource['mediafile_filename'])) {
+                        $storage['full'] = [
+                            'file'  =>  $basepath_storage . $fn_full,
+                            'size'  =>  filesize($basepath_full . $fn_full),
+                            'mime'  =>  mime_content_type($basepath_full . $fn_full)
+                        ];
+                    }*/
 
                     break;
                 }
 
             } // switch
-            $info_file['paths'] = $paths;
+            $info_file['storage'] = $storage;
 
             // по просьбе Лёши передаем инфо о файле прямо тут
             $info_media['file'] = $info_file;
@@ -351,12 +408,6 @@ WHERE rf.item = {$rid}
             // по порядку, а не по ключам.
             // поэтому оставляем в массиве только однозначно приводящиеся к числам ключи, не добавляем ключ '_' (число фоток)
             //
-            //@todo: env?
-            /*$report['media'] = [
-                '_' =>  count($photoreport_files)
-            ];*/
-
-            // порядок фоток внутри фоторепортажа существенен
 
             foreach ($photoreport_files as $rf) {
                 $fid = (int)$rf['mediafile_id'];
@@ -365,15 +416,32 @@ WHERE rf.item = {$rid}
 
                 $media_type = $rf['mediafile_type'];
 
-                $basepath = getenv('PATH.STORAGE') . $media_type . '/' . date('Y/m', strtotime($rf['mediafile_cdate'])) . '/';
+                $basepath_storage = $media_type . '/' . date('Y/m', strtotime($rf['mediafile_cdate'])) . '/';
+                $basepath_full = getenv('PATH.STORAGE') . $basepath_storage;
 
-                $paths = [];
+                FFIECommon::_get_file_info($rf['preview'],
+                    '150x100_' . $rf['mediafile_filename'], $basepath_storage, $basepath_full);
 
-                FFIECommon::_check_file($paths['preview'], $basepath . '150x100_' . $rf['mediafile_filename']);
-                FFIECommon::_check_file($paths['full'], $basepath . '1280x1024_' . $rf['mediafile_filename']);
-                FFIECommon::_check_file($paths['original'], $basepath . '' . $rf['mediafile_filename']);
+                FFIECommon::_get_file_info($rf['full'],
+                    '1280x1024_' . $rf['mediafile_filename'], $basepath_storage, $basepath_full);
 
+                FFIECommon::_get_file_info($rf['original'],
+                    $rf['mediafile_filename'], $basepath_storage, $basepath_full);
+
+                /*$paths = [];
+                if (FFIECommon::_is_file_present($basepath_full . '150x100_' . $rf['mediafile_filename'])) {
+                    $paths['preview'] = $basepath_storage . '150x100_' . $rf['mediafile_filename'];
+                }
+
+                if (FFIECommon::_is_file_present($basepath_full . '1280x1024_' . $rf['mediafile_filename'])) {
+                    $paths['full'] = $basepath_storage . '1280x1024_' . $rf['mediafile_filename'];
+                }
+
+                if (FFIECommon::_is_file_present($basepath_full . $rf['mediafile_filename'])) {
+                    $paths['original'] = $basepath_storage . $rf['mediafile_filename'];
+                }
                 $rf['paths'] = $paths;
+                */
 
                 // по просьбе Лёши отдаем как линейный массив без счетчика элементов (закомментируем индекс)
                 $report['media'][/*$fid*/] = $rf;
