@@ -37,7 +37,7 @@ class ExportDistrict
         // Список антиресных страниц
         $pages_interesting = $this->getInterestingPages();
         $this->_content[] = [
-            'id'    =>  "_{$this->id}",
+            'id'    =>  "{$this->id}",
             'title' =>  "Интересные места",
             'items' =>  $pages_interesting
         ];
@@ -49,21 +49,14 @@ class ExportDistrict
             'type'      =>  'district',
             'content'   =>  [
                 'title'     =>  $this->name,
-                'lead'      =>  strip_tags($this->text_bb),
+                'lead'      =>  trim(strip_tags($this->text_bb)),
                 'text'      =>  $html,
                 'raw'       =>  $this->_content
             ],
             'media'     =>  [
                 'title'     =>  FFIECommon::parseMediaTitle($this->photo)
             ],
-            'location'  =>  [
-                'coords'    =>  [
-                    'lat'       =>  @round($coords[0], 4),
-                    'lon'       =>  @round($coords[1], 4)
-                ],
-                'coords_raw'=>  $this->coords
-            ],
-
+            'coords'    =>  FFIECommon::parseCoords($this->coords)
         ];
     }
 
@@ -120,7 +113,7 @@ class ExportDistrict
 
     private function convertDatasetToHTML(array $_content)
     {
-        $html = PHP_EOL . "<style type='text/css'>ul.ffi { list-style: none; } ul.ffi li:before { content: '»'; margin-right: 5px; }</style>" . PHP_EOL;
+        $html = "<style type='text/css'>ul.ffi { list-style: none; } ul.ffi li:before { content: '»'; margin-right: 5px; }</style>" . PHP_EOL;
 
         foreach ($_content as $rubric_content) {
             $html .= PHP_EOL . "<h1>{$rubric_content['title']}</h1>" . PHP_EOL . "<p>" . PHP_EOL;

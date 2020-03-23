@@ -81,11 +81,7 @@ WHERE p.s_hidden = 0
             ],
             'location'  =>  [
                 'address'   =>  $this->address,
-                'coords'    =>  [
-                    'lat'       =>  @round($coords[0], 4),
-                    'lon'       =>  @round($coords[1], 4)
-                ],
-                'coords_raw'=>  $this->coords
+                'coords'    =>  FFIECommon::parseCoords($this->coords)
             ],
             'tags'  =>  @unserialize($this->tags)
         ];

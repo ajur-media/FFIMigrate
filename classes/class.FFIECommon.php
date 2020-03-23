@@ -212,4 +212,15 @@ class FFIECommon
         return $_media_title;
     }
 
+    public static function parseCoords($raw)
+    {
+        $coords = explode(',', $raw, 2) ?? [0, 0];
+        if (count($coords) < 2) $coords = [0, 0];
+        return [
+            'lat'       =>  @round($coords[0], 5),
+            'lon'       =>  @round($coords[1], 5),
+            'raw'       =>  $raw
+        ];
+    }
+
 }
