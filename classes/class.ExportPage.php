@@ -2,11 +2,13 @@
 
 namespace FFIExport;
 
+use Exception;
 use Arris\DB;
+use PDO;
 
-class ExportPage
+class ExportPage extends Export
 {
-    const sql_query_get_pages_all = "
+    const QUERY_FETCH_PAGES = "
 SELECT 
        p.id, p.old_url, 
        p.rubric_id, rp.name AS rubric_name, 
@@ -31,6 +33,18 @@ ORDER BY p.id
         $page_is_system, $page_is_top;
 
     private $_media_collection_inline = [];
+    /**
+     * @var array
+     */
+    private $_media_inline = [];
+    /**
+     * @var array
+     */
+    private $_related = [];
+    /**
+     * @var array
+     */
+    private $_dataset = [];
 
     /**
      *
@@ -39,9 +53,10 @@ ORDER BY p.id
      */
     public function __construct()
     {
-        $this->_related = $this->getRelated();
+        $this->_related = $this->getRelatedPages();
 
-        $this->_media_inline = $this->parseMediaInline();
+        $this->_media_inline = parent::parseMediaInline($this->id, $this->_media_collection_inline);
+        // $this->_media_inline = FFIECommon::parseMediaInline($this->id, $this->_media_collection_inline);
 
         $this->_dataset = [
             'id'        =>  (int)$this->id,
@@ -95,7 +110,7 @@ ORDER BY p.id
      * @return array
      * @throws Exception
      */
-    private function getRelated()
+    private function getRelatedPages()
     {
         return
             DB::query("
@@ -111,126 +126,12 @@ ORDER BY cdate DESC")
                 });
     }
 
-    /**
-     * @return array
-     * @throws Exception
-     */
-    private function parseMediaInline()
-    {
-        $query = "
-SELECT
-       pf.id AS embed_id, 
-       pf.fid AS mediafile_id,
-       pf.descr AS media_description,
-       f.source AS media_source,
-       f.link AS media_link,
-       f.type AS media_type,
-       f.cdate AS media_cdate,
-       f.file AS mediafile_filename,
-       f.name AS mediafile_originalfilename
-FROM 
-     pages_files AS pf 
-LEFT JOIN files AS f ON f.id = pf.fid 
-WHERE pf.item = {$this->id}
-        ";
-
-        $sth = DB::query($query);
-
-        $_data = [];
-        $_data['_'] = 0;
-
-        while ($resource = $sth->fetch()) {
-            $media_fid = (int)$resource['mediafile_id'];
-            $media_type = $resource['media_type'];
-
-            $info_media = [
-                'fid'   =>  $media_fid,
-                'type'  =>  $media_type,
-                'descr' =>  $resource['media_description'],
-            ];
-
-            if (getenv('MEDIA.MEDIA.EXPORT_RAW')) {
-                $info_media['raw'] = $resource;
-            }
-
-            $info_file = [
-                'fid'       =>  $media_fid,
-                'type'      =>  $media_type,
-                'from'      =>  [
-                    'source'    =>  $resource['media_source'],
-                    'link'      =>  $resource['media_link'],
-                ],
-                'cdate'     =>  FFIECommon::_date_format($resource['media_cdate']),
-                'original_name' =>  $resource['mediafile_originalfilename'],
-            ];
-
-            $basepath_storage = $media_type . '/' . date('Y/m', strtotime($resource['media_cdate'])) . '/';
-            $basepath_full = getenv('PATH.STORAGE') . $basepath_storage;
-
-            $paths = [];
-            switch ($media_type) {
-                case 'photos': {
-                    $fn_preview     = '650x486_' . $resource['mediafile_filename'];
-                    $fn_full        = '1280x1024_' . $resource['mediafile_filename'];
-                    $fn_original    = $resource['mediafile_filename'];
-
-                    FFIECommon::_get_file_info($info_file['preview'], $fn_preview, $basepath_storage, $basepath_full);
-                    FFIECommon::_get_file_info($info_file['full'], $fn_full, $basepath_storage, $basepath_full);
-                    FFIECommon::_get_file_info($info_file['original'], $fn_original, $basepath_storage, $basepath_full);
-
-                    /*
-                    if (FFIECommon::_is_file_present($basepath_full . '650x486_' . $resource['mediafile_filename'])) {
-                        $paths['preview'] = $basepath_storage . '650x486_' . $resource['mediafile_filename'];
-                    }
-
-                    if (FFIECommon::_is_file_present($basepath_full . '1280x1024_' . $resource['mediafile_filename'])) {
-                        $paths['full'] = $basepath_storage . '1280x1024_' . $resource['mediafile_filename'];
-                    }
-
-                    if (FFIECommon::_is_file_present($basepath_full . $resource['mediafile_filename'])) {
-                        $paths['original'] = $basepath_storage . $resource['mediafile_filename'];
-                    }*/
-
-                    break;
-                }
-                case 'files':
-                case 'audios':
-                case 'videos': {
-                    $fn_full = $resource['mediafile_filename'];
-                    FFIECommon::_get_file_info($info_file['full'], $fn_full, $basepath_storage, $basepath_full);
-
-                    /*if (FFIECommon::_is_file_present($basepath_full . $resource['mediafile_filename'])) {
-                        $paths['full'] = $basepath_storage . $resource['mediafile_filename'];
-                    }*/
-
-                    break;
-                }
-
-            } // switch
-            $info_file['paths'] = $paths;
-
-            $info_media['file'] = $info_file;
-
-            $_data[ (int)$resource['embed_id'] ] = $info_media;
-
-            $_data['_']++;
-
-            $this->_media_collection_inline[ $media_fid ] = $info_file;
-
-            unset($info_media);
-        }
-
-        // Если медиаданных этого типа нет - возвращаем пустой массив
-        if ($_data['_'] === 0)
-            $_data = [];
-
-        return $_data;
-    }
-
     public function exportInlineMediaCollection()
     {
         return $this->_media_collection_inline;
     }
 
 
-}
+} // class
+
+# -eof-

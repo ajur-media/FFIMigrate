@@ -3,10 +3,12 @@
 namespace FFIExport;
 
 use Arris\DB;
+use Exception;
 
-class ExportDistrict
+class ExportDistrict extends Export
 {
     const QUERY_FETCH_DISTRICTS = "SELECT * FROM districts WHERE hidden = 0";
+
     private $_dataset = [];
 
     private $_content = [];
@@ -16,13 +18,10 @@ class ExportDistrict
     /**
      * ExportDistrict constructor.
      *
-     * @throws \Exception
+     * @throws Exception
      */
     public function __construct()
     {
-        $coords = explode(',', $this->coords, 2) ?? [0, 0];
-        if (count($coords) < 2) $coords = [0, 0];
-
         // Список рубрик, присоединенных к району
         $rubrics_of_district = $this->getRubricsOfDistrict($this->id);
 
@@ -54,9 +53,10 @@ class ExportDistrict
                 'raw'       =>  $this->_content
             ],
             'media'     =>  [
-                'title'     =>  FFIECommon::parseMediaTitle($this->photo)
+                // 'title'     =>  FFIECommon::parseMediaTitle($this->photo)
+                'title'     =>  parent::parseMediaTitle($this->photo)
             ],
-            'coords'    =>  FFIECommon::parseCoords($this->coords)
+            'coords'    =>  parent::parseCoords($this->coords)
         ];
     }
 
@@ -71,7 +71,7 @@ class ExportDistrict
      * @param $id - id района
      *
      * @return array
-     * @throws \Exception
+     * @throws Exception
      */
     private function getRubricsOfDistrict($id)
     {
@@ -90,7 +90,7 @@ class ExportDistrict
      *
      * @param $id - id рубрики
      * @return array
-     * @throws \Exception
+     * @throws Exception
      */
     private function getRubricContent($id)
     {
@@ -102,7 +102,7 @@ class ExportDistrict
      * Экспорт "интересных мест"
      *
      * @return array
-     * @throws \Exception
+     * @throws Exception
      */
     private function getInterestingPages()
     {
@@ -111,6 +111,10 @@ class ExportDistrict
         return DB::C()->query($sql)->fetchAll();
     }
 
+    /**
+     * @param array $_content
+     * @return string
+     */
     private function convertDatasetToHTML(array $_content)
     {
         $html = "<style type='text/css'>ul.ffi { list-style: none; } ul.ffi li:before { content: '»'; margin-right: 5px; }</style>" . PHP_EOL;
@@ -131,4 +135,6 @@ class ExportDistrict
     }
 
 
-}
+} // class
+
+# -eof-

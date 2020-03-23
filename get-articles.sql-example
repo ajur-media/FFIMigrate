@@ -1,0 +1,9 @@
+{
+  "count": "SELECT count(*)",
+  "data": "SELECT a.*, adm.login AS adm_author_login, adm.id as adm_author_id",
+
+  "from": "FROM articles AS a LEFT JOIN admin AS adm ON a.author_id = adm.id ",
+
+  "condition": "WHERE s_hidden = 0 AND s_draft = 0 AND cdate IS NOT NULL",
+  "order": "ORDER BY id"
+}

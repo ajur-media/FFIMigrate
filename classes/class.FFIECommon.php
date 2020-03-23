@@ -30,7 +30,6 @@ class FFIECommon
      */
     public static function getExportFilename($item, $pad = 5)
     {
-        $filename = '';
         if (getenv('EXPORT.NAME_BY_TYPE') == 'directory') {
             if ($item['type'] === 'articles') {
                 $filename = getenv('PATH.EXPORT.ARTICLES') . DIRECTORY_SEPARATOR;
@@ -55,11 +54,6 @@ class FFIECommon
         return $filename;
     }
 
-    public static function getExportFilenamePage($page)
-    {
-        return getenv('PATH.EXPORT.ALL') . DIRECTORY_SEPARATOR . 'page-' . $page['id'] . '.json';
-    }
-
     /**
      * @param string $filename
      * @param array $data
@@ -81,24 +75,11 @@ class FFIECommon
         return date('c', strtotime($date_string));
     }
 
-    /**
-     * Проверяет существование файла и если он существует - записывает его в соотв поле target
-     * @param $target
-     * @param $filepath
-     * @return string
-     */
-    public static function _check_file(&$target, $filepath)
-    {
-        if (getenv('EXPORT.MEDIA.ONLY_PRESENT_FILES')) {
-            if (is_file($filepath)) {
-                $target = $filepath;
-            };
-        } else {
-            $target = $filepath;
-        }
-        return $filepath;
-    }
 
+    /**
+     * @param $filepath
+     * @return bool
+     */
     public static function _is_file_present($filepath)
     {
         return
@@ -107,6 +88,13 @@ class FFIECommon
                 : true;
     }
 
+    /**
+     * @param $target
+     * @param $filename
+     * @param $path_storage
+     * @param $path_full
+     * @return bool
+     */
     public static function _get_file_info(&$target, $filename, $path_storage, $path_full)
     {
         if (self::_is_file_present($path_full . $filename)) {
@@ -163,64 +151,6 @@ class FFIECommon
         return false;
     }
 
-    /**
-     * Парсит и экспортирует тайтловую фотографию на основе CDATE + Filename
-     *
-     * @param $photo
-     * @return array
-     */
-    public static function parseMediaTitle($photo)
-    {
-        $u_photo = ($photo != '') ? @unserialize($photo) : [];
+} // class
 
-        $_media_title = [
-            '_'     =>  'not_found'
-        ];
-
-        $is_present = false;
-
-        if (!empty($u_photo) && is_array($u_photo)) {
-            $_file = array_key_exists('file', $u_photo) ? stripslashes($u_photo['file']) : null;
-            $_cdate = array_key_exists('cdate', $u_photo) ? $u_photo['cdate'] : null;
-            $_descr = array_key_exists('descr', $u_photo) ? $u_photo['descr'] : null;
-
-            if ($_file && $_cdate) {
-                $_storage_filepath = getenv('PATH.STORAGE') . 'photos/' . date('Y/m', strtotime($_cdate));
-
-                if (FFIECommon::_is_file_present($_storage_filepath . '/' . $_file)) {
-                    $_media_title = [
-                        '_'     =>  'path/cdate',
-                        'uri'   =>  'photos/' . date('Y/m', strtotime($_cdate)) . '/' . $_file,
-                        'size'  =>  @filesize($_storage_filepath . '/' . $_file),
-                        'mime'  =>  @mime_content_type($_storage_filepath . '/' . $_file)
-                    ];
-
-                    $is_present = true;
-                }
-            }
-
-            if ($is_present && $_descr) {
-                $_media_title['titles'] = $u_photo['descr'];
-            }
-
-        }
-
-        if (getenv('MEDIA.TITLE.EXPORT_RAW') && $u_photo) {
-            $_media_title['raw'] = $u_photo;
-        }
-
-        return $_media_title;
-    }
-
-    public static function parseCoords($raw)
-    {
-        $coords = explode(',', $raw, 2) ?? [0, 0];
-        if (count($coords) < 2) $coords = [0, 0];
-        return [
-            'lat'       =>  @round($coords[0], 5),
-            'lon'       =>  @round($coords[1], 5),
-            'raw'       =>  $raw
-        ];
-    }
-
-}
+# -eof-

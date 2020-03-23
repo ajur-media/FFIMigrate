@@ -2,22 +2,24 @@
 
 namespace FFIExport;
 
+use Exception;
 use Arris\DB;
+use PDO;
 use Spatie\Regex;
 
-class ExportArticle
+
+class ExportArticle extends Export
 {
-    const sql_query_get_article_by_id = "
-SELECT
+    const QUERY_FETCH_ARTICLES = "SELECT
 	a.*,
     adm.login AS adm_author_login, 
     adm.id as adm_author_id
 FROM 
 	articles AS a
 LEFT JOIN admin AS adm ON a.author_id = adm.id 	
-WHERE
-	a.id = :id
-";
+WHERE s_draft = 0 AND cdate IS NOT NULL ORDER BY id";
+
+    const QUERY_FETCH_ARTICLES_COUNT = "SELECT COUNT(id) FROM articles WHERE s_draft = 0 AND cdate IS NOT NULL ORDER BY id";
 
     /*
      * Autoloaded fields
@@ -70,10 +72,11 @@ WHERE
     {
         $this->_articles_related = $this->getRelatedArticles();
 
-        $this->_article_media_title = $this->parseMediaTitle();
         $this->_article_media_html = $this->parseHTMLWidgets();
 
-        $this->_article_media_inline = $this->parseMediaInline();
+        $this->_article_media_inline = parent::parseMediaInline($this->id, $this->_media_collection_inline);
+        $this->_article_media_title = parent::parseMediaTitle($this->photo);
+
         $this->_article_media_reports = $this->parseMediaReports();
 
         $this->_dataset = [
@@ -132,7 +135,7 @@ WHERE
      * @return array
      * @throws Exception
      */
-    public function exportArticle()
+    public function export()
     {
         return $this->_dataset;
     }
@@ -157,201 +160,6 @@ WHERE
         return $this->_article_media_title;
     }
 
-    /**
-     * Возвращает MEDIA типа 'titleimage'
-     *
-     * @return array
-     */
-    private function parseMediaTitle()
-    {
-        $u_photo = ($this->photo != '') ? @unserialize($this->photo) : [];
-
-        $_media_title = [
-            '_'     =>  'not_found'
-        ];
-
-        $is_present = false;
-
-        if (!empty($u_photo) && is_array($u_photo)) {
-            $_file = array_key_exists('file', $u_photo) ? stripslashes($u_photo['file']) : null;
-            $_path = array_key_exists('path', $u_photo) ? stripslashes($u_photo['path']) : null;
-            $_cdate = array_key_exists('cdate', $u_photo) ? $u_photo['cdate'] : null;
-            $_descr = array_key_exists('descr', $u_photo) ? $u_photo['descr'] : null;
-
-            if ($_file && $_path) {
-                $_storage_filepath = getenv('PATH.STORAGE') . $_path;
-
-                if (FFIECommon::_is_file_present($_storage_filepath . '/' . $_file)) {
-                    $_media_title = [
-                        '_'     =>  'path/file',
-                        'uri'   =>  $_path . '/' . $_file,
-                        'size'  =>  filesize($_storage_filepath . '/' . $_file),
-                        'mime'  =>  mime_content_type($_storage_filepath . '/' . $_file)
-                    ];
-
-                    $is_present = true;
-                }
-
-            } elseif ($_file && $_cdate) {
-                $_storage_filepath = getenv('PATH.STORAGE') . 'photos/' . date('Y/m', strtotime($_cdate));
-
-                if (FFIECommon::_is_file_present($_storage_filepath . '/' . $_file)) {
-                    $_media_title = [
-                        '_'     =>  'path/cdate',
-                        'uri'   =>  'photos/' . date('Y/m', strtotime($_cdate)) . '/' . $_file,
-                        'size'  =>  filesize($_storage_filepath . '/' . $_file),
-                        'mime'  =>  mime_content_type($_storage_filepath . '/' . $_file)
-                    ];
-
-                    $is_present = true;
-                }
-            }
-
-            if ($is_present && $_descr) {
-                $_media_title['titles'] = $u_photo['descr'];
-            }
-
-        }
-
-        if (getenv('MEDIA.TITLE.EXPORT_RAW') && $u_photo) {
-            $_media_title['raw'] = $u_photo;
-        }
-
-        return $_media_title;
-    }
-
-    /**
-     *
-     * @return array
-     * @throws Exception
-     */
-    private function parseMediaInline()
-    {
-        $query = "
-SELECT
-       af.id AS embed_id, 
-       af.fid AS mediafile_id,
-       af.descr AS media_description,
-       f.source AS media_source,
-       f.link AS media_link,
-       f.type AS media_type,
-       f.cdate AS media_cdate,
-       f.file AS mediafile_filename,
-       f.name AS mediafile_originalfilename
-FROM 
-     articles_files AS af 
-LEFT JOIN files AS f ON f.id = af.fid 
-WHERE af.item = {$this->id}
-        ";
-
-        $sth = DB::query($query);
-
-        $_data = [];
-        $_data['_'] = 0;
-
-        while ($resource = $sth->fetch()) {
-            $media_fid = (int)$resource['mediafile_id'];
-            $media_type = $resource['media_type'];
-
-            $info_media = [
-                'fid'   =>  $media_fid,
-                'type'  =>  $media_type,
-                'descr' =>  $resource['media_description'],
-            ];
-
-            if (getenv('MEDIA.MEDIA.EXPORT_RAW')) {
-                $info_media['raw'] = $resource;
-            }
-
-            $info_file = [
-                'fid'       =>  $media_fid,
-                'type'      =>  $media_type,
-                'from'      =>  [
-                    'source'    =>  $resource['media_source'],
-                    'link'      =>  $resource['media_link'],
-                ],
-                'cdate'     =>  FFIECommon::_date_format($resource['media_cdate']),
-                'original_name' =>  $resource['mediafile_originalfilename'],
-            ];
-
-            $basepath_storage = $media_type . '/' . date('Y/m', strtotime($resource['media_cdate'])) . '/';
-            $basepath_full = getenv('PATH.STORAGE') . $basepath_storage;
-
-            $paths = [];
-            $storage = [];
-            switch ($media_type) {
-                case 'photos': {
-                    $fn_preview     = '650x486_' . $resource['mediafile_filename'];
-                    $fn_full        = '1280x1024_' . $resource['mediafile_filename'];
-                    $fn_original    = $resource['mediafile_filename'];
-
-                    FFIECommon::_get_file_info($info_file['preview'], $fn_preview, $basepath_storage, $basepath_full);
-                    FFIECommon::_get_file_info($info_file['full'], $fn_full, $basepath_storage, $basepath_full);
-                    FFIECommon::_get_file_info($info_file['original'], $fn_original, $basepath_storage, $basepath_full);
-
-                    /*if (FFIECommon::_is_file_present($basepath_full . $fn_preview)) {
-                        $storage['preview'] = [
-                            'file'  =>  $basepath_storage . $fn_preview,
-                            'size'  =>  filesize($basepath_full . $fn_preview),
-                            'mime'  =>  mime_content_type($basepath_full . $fn_preview)
-                        ];
-                    }
-
-                    if (FFIECommon::_is_file_present($basepath_full . $fn_full)) {
-                        $storage['full'] = [
-                            'file'  =>  $basepath_storage . $fn_full,
-                            'size'  =>  filesize($basepath_full . $fn_full),
-                            'mime'  =>  mime_content_type($basepath_full . $fn_full)
-                        ];
-                    }
-
-                    if (FFIECommon::_is_file_present($basepath_full . $fn_original)) {
-                        $storage['original'] = [
-                            'file'  =>  $basepath_storage . $fn_original,
-                            'size'  =>  filesize($basepath_full . $fn_original),
-                            'mime'  =>  mime_content_type($basepath_full . $fn_original)
-                        ];
-                    }*/
-
-                    break;
-                }
-                case 'files':
-                case 'audios':
-                case 'videos': {
-                    $fn_full = $resource['mediafile_filename'];
-
-                    FFIECommon::_get_file_info($info_file['full'], $fn_full, $basepath_storage, $basepath_full);
-
-                    /*if (FFIECommon::_is_file_present($basepath_full . $resource['mediafile_filename'])) {
-                        $storage['full'] = [
-                            'file'  =>  $basepath_storage . $fn_full,
-                            'size'  =>  filesize($basepath_full . $fn_full),
-                            'mime'  =>  mime_content_type($basepath_full . $fn_full)
-                        ];
-                    }*/
-
-                    break;
-                }
-
-            } // switch
-            $info_file['storage'] = $storage;
-
-            // по просьбе Лёши передаем инфо о файле прямо тут
-            $info_media['file'] = $info_file;
-
-            $_data[ (int)$resource['embed_id'] ] = $info_media;
-            $_data['_']++;
-            unset($info_media);
-
-            $this->_media_collection_inline[ $media_fid ] = $info_file;
-        }
-
-        // Если медиаданных этого типа нет - возвращаем пустой массив
-        if ($_data['_'] === 0)
-            $_data = [];
-
-        return $_data;
-    }
 
     /**
      * Возвращает фоторепортажи
@@ -430,21 +238,6 @@ WHERE rf.item = {$rid}
                 FFIECommon::_get_file_info($rf['original'],
                     $rf['mediafile_filename'], $basepath_storage, $basepath_full);
 
-                /*$paths = [];
-                if (FFIECommon::_is_file_present($basepath_full . '150x100_' . $rf['mediafile_filename'])) {
-                    $paths['preview'] = $basepath_storage . '150x100_' . $rf['mediafile_filename'];
-                }
-
-                if (FFIECommon::_is_file_present($basepath_full . '1280x1024_' . $rf['mediafile_filename'])) {
-                    $paths['full'] = $basepath_storage . '1280x1024_' . $rf['mediafile_filename'];
-                }
-
-                if (FFIECommon::_is_file_present($basepath_full . $rf['mediafile_filename'])) {
-                    $paths['original'] = $basepath_storage . $rf['mediafile_filename'];
-                }
-                $rf['paths'] = $paths;
-                */
-
                 // по просьбе Лёши отдаем как линейный массив без счетчика элементов (закомментируем индекс)
                 $report['media'][/*$fid*/] = $rf;
             } // each photoreport
@@ -462,6 +255,9 @@ WHERE rf.item = {$rid}
 
     /**
      * Добавляет информацию по HTML-виджетам
+     *
+     * @return array
+     * @throws Regex\RegexFailed
      */
     private function parseHTMLWidgets()
     {
@@ -521,14 +317,6 @@ WHERE rf.item = {$rid}
      */
     private function exportArticleRubrics()
     {
-        /*$rubrics = @unserialize($this->rubrics);
-        $data = [];
-        if (is_array($rubrics)) {
-            foreach ($rubrics as $id => $r) {
-                $data[ (int)$id ] = $r['name'];
-            }
-        }
-        return $data;*/
         $id = $this->id;
         $query = "SELECT 
     ra.id AS rubric_id,
@@ -553,16 +341,6 @@ ORDER BY ra.sort DESC  ";
      */
     private function exportArticleDistricts()
     {
-        /*$districs = @unserialize($this->districts);
-        $data = [];
-        if (is_array($districs)) {
-            $this->districts = [];
-            foreach ($districs as $id => $d) {
-                $data[ (int)$id ] = $d['name'];
-            }
-        }
-        return $data;
-        */
         $id = $this->id;
         $query = "SELECT 
     d.id AS district_id,
@@ -625,4 +403,6 @@ ORDER BY cdate ")
     }
 
 
-}
+} // class
+
+# -eof-

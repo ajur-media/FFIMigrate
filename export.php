@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-ini_set('memory_limit','256M');
+ini_set('memory_limit','1024M');
 
 use Arris\AppLogger;
 use Arris\CLIConsole;
@@ -50,35 +50,32 @@ try {
             FFIECommon::checkDirectory(__DIR__ . DIRECTORY_SEPARATOR . getenv('PATH.EXPORT.NEWS'));
         }
 
-        $sql_source_file = "get-articles.sql";
-        $select_query
-            = is_file($sql_source_file)
-            ? file_get_contents($sql_source_file)
-            : "SELECT id FROM articles WHERE s_hidden = 0 AND s_draft = 0 AND cdate IS NOT NULL ORDER BY id";
-        dd($select_query);
+        // build select&count query
+        $sql_source_file = "get-articles.json";
+        if (is_file($sql_source_file) && $sql_source_file = file_get_contents($sql_source_file)) {
+            $sql_source_file = json_decode($sql_source_file);
 
-        // получаем список ID статей
-        $articles_ids_list = DB::query($select_query)->fetchAll(PDO::FETCH_COLUMN);
-        $count_curr  = 0;
-        $count_total = count($articles_ids_list);
+            $query_count = "{$sql_source_file['count']} {$sql_source_file['from']} {$sql_source_file['where']}";
+            $query_data  = "{$sql_source_file['data']} {$sql_source_file['from']} {$sql_source_file['where']} {$sql_source_file['order']}" ;
+        } else {
+            $query_count = ExportArticle::QUERY_FETCH_ARTICLES_COUNT;
+            $query_data  = ExportArticle::QUERY_FETCH_ARTICLES;
+        }
 
+        $count_total = DB::C()->query($query_count)->fetchColumn();
+        $count_curr = 0;
         $articles_list = [];   // список итемов
-        $pages_list = [];
 
-        $sth_articles = DB::C()->prepare(ExportArticle::sql_query_get_article_by_id);
+        $sth = DB::C()->query($query_data);
 
-        // перебираем статьи
-        foreach ($articles_ids_list as $id) {
+        /**
+         * @var $article ExportArticle
+         */
+        while ($article = $sth->fetchObject(ExportArticle::class)) {
             $count_curr++;
 
-            $sth_articles->execute(['id' => $id]);
-            $article = $sth_articles->fetchObject(ExportArticle::class);
-
-            /**
-             * @var $article ExportArticle
-             */
-            $article_export = $article->exportArticle();
-            $article_id = $article_export['id'];
+            $exported_article = $article->export();
+            $article_id = $exported_article['id'];
 
             foreach ($article->exportInlineMediaCollection() as $fid => $finfo) {
                 $media_inline[ $fid ] = $finfo;
@@ -86,26 +83,26 @@ try {
 
             $media_titles[ $article_id ] = $article->exportTitleMediaCollection();
 
-            $filename = FFIECommon::getExportFilename($article_export, 5);
-            FFIECommon::exportJSON($filename, $article_export);
+            $filename = FFIECommon::getExportFilename($exported_article, 5);
+            FFIECommon::exportJSON($filename, $exported_article);
 
             // сообщение
             $message
                 = "[" . str_pad($count_curr, 6, ' ', STR_PAD_LEFT)
                 . " / " . str_pad($count_total, 6, ' ', STR_PAD_RIGHT) . ']' .
-                " Item id = <font color='green'>{$id}</font> exported to file <font color='yellow'>{$filename}</font>";
+                " Item id = <font color='green'>{$article_id}</font> exported to file <font color='yellow'>{$filename}</font>";
 
             CLIConsole::say($message);
 
             $articles_list[ $article_id ] = [
                 'id'    =>  $article_id,
-                'type'  =>  $article_export['type'],
-                'title' =>  $article_export['content']['title'],
+                'type'  =>  $exported_article['type'],
+                'title' =>  $exported_article['content']['title'],
                 'json'  =>  $filename
             ];
 
             unset($article);
-        } // foreach article
+        }
 
         CLIConsole::say("Exporting <font color='yellow'>{$export_directory}/list-items.json</font>");
         ksort($articles_list, SORT_NATURAL);
@@ -119,9 +116,11 @@ try {
         if (getenv('EXPORT.NAME_BY_TYPE') == 'directory') {
             FFIECommon::checkDirectory(__DIR__ . DIRECTORY_SEPARATOR . getenv('PATH.EXPORT.PAGES'));
         }
+        $pages_list = [];
+
 
         // перебираем страницы
-        $sth_pages = DB::C()->query(ExportPage::sql_query_get_pages_all);
+        $sth_pages = DB::C()->query(ExportPage::QUERY_FETCH_PAGES);
         /**
          * @var ExportPage $a_page
          */
