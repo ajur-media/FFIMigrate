@@ -29,7 +29,7 @@ WHERE p.s_hidden = 0
     private $id, $cdate;
     private $rubric_id, $rubric_name;
     private $district_id, $district_name;
-    private $title, $short, $text;
+    private $title, $short, $text, $text_bb;
     private $s_lang_en, $s_lang_ru, $s_lang_fi;
     private $website, $phone, $email, $worktime, $address, $coords;
     private $tags;
@@ -53,9 +53,11 @@ WHERE p.s_hidden = 0
                 'title'     =>  $this->_article_media_title,
                 'media'     =>  $this->_article_media_inline,
             ],
-            'title'     =>  $this->title,
-            'lead'      =>  $this->short,
-            'text'      =>  $this->text,
+            'content'   =>  [
+                'title'     =>  $this->title,
+                'lead'      =>  $this->short,
+                'text_bb'   =>  $this->text_bb,
+            ],
             'rubric'    =>  [
                 'id'        =>  $this->rubric_id,
                 'name'      =>  $this->rubric_name
@@ -74,7 +76,6 @@ WHERE p.s_hidden = 0
                 'phone'     =>  $this->phone,
                 'email'     =>  $this->email,
                 'worktime'  =>  $this->worktime,
-
             ],
             'location'  =>  [
                 'address'   =>  $this->address,
@@ -86,8 +87,6 @@ WHERE p.s_hidden = 0
             ],
             'tags'  =>  @unserialize($this->tags)
         ];
-        // photo: title photo
-
     }
 
     public function export()
