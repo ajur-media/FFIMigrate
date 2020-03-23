@@ -1,6 +1,8 @@
 <?php
 
+use Spatie\Regex\MatchResult;
 use Spatie\Regex\Regex;
+use Spatie\Regex\RegexFailed;
 
 class FFIECommon
 {
@@ -34,6 +36,8 @@ class FFIECommon
                 $filename = getenv('PATH.EXPORT.NEWS') . DIRECTORY_SEPARATOR;
             } elseif ($item['type'] === 'page') {
                 $filename = getenv('PATH.EXPORT.PAGES') . DIRECTORY_SEPARATOR;
+            } elseif ($item['type'] === 'place') {
+                $filename = getenv('PATH.EXPORT.PLACES') . DIRECTORY_SEPARATOR;
             } else {
                 $filename = getenv('PATH.EXPORT.ALL') . DIRECTORY_SEPARATOR;
             }
@@ -104,8 +108,8 @@ class FFIECommon
         if (self::_is_file_present($path_full . $filename)) {
             $target = [
                 'file'  =>  $path_storage . $filename,
-                'size'  =>  filesize($path_full . $filename),
-                'mime'  =>  mime_content_type($path_full . $filename)
+                'size'  =>  @filesize($path_full . $filename),
+                'mime'  =>  @mime_content_type($path_full . $filename)
             ];
             return true;
         }
@@ -138,13 +142,13 @@ class FFIECommon
      *
      * @param $html
      * @return bool|string
-     * @throws \Spatie\Regex\RegexFailed
+     * @throws RegexFailed
      */
     public static function checkExternalLink($html)
     {
         $pattern = '/\<meta\shttp-equiv="refresh"\scontent=";url=((https?):\/\/(-\.)?([^\s\/?\.#-]+\.?)+(\/[^\s]*)?)\"\>/';
         /**
-         * @param \Spatie\Regex\MatchResult $match
+         * @param MatchResult $match
          */
         $match = Regex::match($pattern, $html);
 
