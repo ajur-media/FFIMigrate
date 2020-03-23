@@ -165,8 +165,7 @@ try {
             $filename = FFIECommon::getExportFilename($place_export, 5);
             FFIECommon::exportJSON($filename, $place_export);
 
-            $message
-                = " Item id = <font color='green'>{$place_export['id']}</font> exported to file <font color='yellow'>{$filename}</font>";
+            CLIConsole::say(" Item id = <font color='green'>{$place_export['id']}</font> exported to file <font color='yellow'>{$filename}</font>");
         }
     }
 
