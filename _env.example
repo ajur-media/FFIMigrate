@@ -5,11 +5,11 @@
 
 DB_USERNAME         = ""
 DB_PASSWORD         = ""
-DB_DATABASE     = ""
+DB_DATABASE     = "fontankafi"
 
 # Path to storage (with tailing slash)
 
-PATH.STORAGE    = ""
+PATH.STORAGE    = "/var/www/fontankafi.storage/"
 
 # Export directory (without tailing slash) from current
 
@@ -22,9 +22,20 @@ PATH.EXPORT.ALL         =   "_export"
 
 EXPORT.NAME_BY_TYPE     = 'directory'
 
+# -- Что экспортируем? --
+
+EXPORT.ARTICLES         = 0
+EXPORT.PAGES            = 0
+EXPORT.PLACES           = 0
+EXPORT.DISTRICTS        = 0
+
+# -- Paths --
+
 PATH.EXPORT.ARTICLES        =   "_export/articles"
 PATH.EXPORT.NEWS            =   "_export/news"
 PATH.EXPORT.PAGES           =   "_export/pages"
+PATH.EXPORT.PLACES          =   "_export/places"
+PATH.EXPORT.DISTRICTS       =   "_export/districts"
 
 # Настройки TRIM
 TRIM.AUTHOR = 1
@@ -32,12 +43,12 @@ TRIM.TITLE = 1
 TRIM.LEAD = 1
 
 # Общие настройки экспорта
-EXPORT.MEDIA.ONLY_PRESENT_FILES = 1
+EXPORT.MEDIA.ONLY_PRESENT_FILES = 0
 
 # Настройки экспорта MEDIA:Title
 MEDIA.TITLE.EXPORT_RAW = 0              # экспортировать сырые десериализованные данные
 MEDIA.TITLE.EXPORT_ALWAYS = 0           # 1: экспортировать даже если данные пусты, иначе вернуть []
-MEDIA.TITLE_EXPORT_TO_COLLECTION = 1       # экспортировать ли в коллекцию medias
+MEDIA.TITLE_EXPORT_TO_COLLECTION = 0       # экспортировать ли в коллекцию medias
 
 # Настройки экспорта HTML-виджетов
 MEDIA.HTML.EXPORT_STRING = 1
@@ -47,6 +58,4 @@ MEDIA.HTML.SAVE_DEBUG = 0
 
 # Настройки экспорта MEDIA:inline media
 MEDIA.MEDIA.EXPORT_RAW = 0              # сохранять ли исходные сырые данные?
-
-
 

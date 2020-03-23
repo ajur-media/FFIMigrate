@@ -1,7 +1,9 @@
 <?php
 
+namespace FFIExport;
 
 use Arris\DB;
+use FFIExport\FFIECommon;
 
 class ExportPlace
 {

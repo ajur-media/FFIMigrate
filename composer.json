@@ -11,6 +11,11 @@
     "config": {
         "optimize-autoloader": true
     },
+    "autoload": {
+        "classmap": [
+            "classes/"
+        ]
+    },
     "require": {
         "ext-curl": "*",
         "ext-fileinfo": "*",

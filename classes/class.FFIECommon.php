@@ -1,5 +1,7 @@
 <?php
 
+namespace FFIExport;
+
 use Spatie\Regex\MatchResult;
 use Spatie\Regex\Regex;
 use Spatie\Regex\RegexFailed;
@@ -38,6 +40,8 @@ class FFIECommon
                 $filename = getenv('PATH.EXPORT.PAGES') . DIRECTORY_SEPARATOR;
             } elseif ($item['type'] === 'place') {
                 $filename = getenv('PATH.EXPORT.PLACES') . DIRECTORY_SEPARATOR;
+            } elseif ($item['type'] === 'district') {
+                $filename = getenv('PATH.EXPORT.DISTRICTS') . DIRECTORY_SEPARATOR;
             } else {
                 $filename = getenv('PATH.EXPORT.ALL') . DIRECTORY_SEPARATOR;
             }
@@ -157,6 +161,55 @@ class FFIECommon
         }
 
         return false;
+    }
+
+    /**
+     * Парсит и экспортирует тайтловую фотографию на основе CDATE + Filename
+     *
+     * @param $photo
+     * @return array
+     */
+    public static function parseMediaTitle($photo)
+    {
+        $u_photo = ($photo != '') ? @unserialize($photo) : [];
+
+        $_media_title = [
+            '_'     =>  'not_found'
+        ];
+
+        $is_present = false;
+
+        if (!empty($u_photo) && is_array($u_photo)) {
+            $_file = array_key_exists('file', $u_photo) ? stripslashes($u_photo['file']) : null;
+            $_cdate = array_key_exists('cdate', $u_photo) ? $u_photo['cdate'] : null;
+            $_descr = array_key_exists('descr', $u_photo) ? $u_photo['descr'] : null;
+
+            if ($_file && $_cdate) {
+                $_storage_filepath = getenv('PATH.STORAGE') . 'photos/' . date('Y/m', strtotime($_cdate));
+
+                if (FFIECommon::_is_file_present($_storage_filepath . '/' . $_file)) {
+                    $_media_title = [
+                        '_'     =>  'path/cdate',
+                        'uri'   =>  'photos/' . date('Y/m', strtotime($_cdate)) . '/' . $_file,
+                        'size'  =>  @filesize($_storage_filepath . '/' . $_file),
+                        'mime'  =>  @mime_content_type($_storage_filepath . '/' . $_file)
+                    ];
+
+                    $is_present = true;
+                }
+            }
+
+            if ($is_present && $_descr) {
+                $_media_title['titles'] = $u_photo['descr'];
+            }
+
+        }
+
+        if (getenv('MEDIA.TITLE.EXPORT_RAW') && $u_photo) {
+            $_media_title['raw'] = $u_photo;
+        }
+
+        return $_media_title;
     }
 
 }

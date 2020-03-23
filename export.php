@@ -8,20 +8,26 @@ use Arris\DB;
 use Monolog\Logger;
 use Dotenv\Dotenv;
 
+use FFIExport\FFIECommon;
+use FFIExport\ExportArticle;
+use FFIExport\ExportDistrict;
+use FFIExport\ExportPage;
+use FFIExport\ExportPlace;
+
 require_once __DIR__ . '/vendor/autoload.php';
-require_once __DIR__ . '/classes/class.ExportArticle.php';
-require_once __DIR__ . '/classes/class.ExportPage.php';
-require_once __DIR__ . '/classes/class.ExportPlace.php';
-require_once __DIR__ . '/classes/class.FFIECommon.php';
-
-Dotenv::create(__DIR__, '_env')->load();
-
-AppLogger::init('FFI_EXPORT', basename(__FILE__));
-AppLogger::addScope('main', [
-    [ 'export.log', Logger::DEBUG ]
-]);
 
 try {
+    Dotenv::create(__DIR__, '_env')->load();
+
+    AppLogger::init('FFI_EXPORT', basename(__FILE__));
+    AppLogger::addScope('main', [
+        [ 'export.log', Logger::DEBUG ]
+    ]);
+
+    /* =================================================================================================================*/
+    /* ============================        INIT                      ===================================================*/
+    /* =================================================================================================================*/
+
     $export_directory = getenv('PATH.EXPORT.ALL');
     FFIECommon::checkDirectory(__DIR__ . DIRECTORY_SEPARATOR . getenv('PATH.EXPORT.ALL'));
 
@@ -35,18 +41,21 @@ try {
     $media_inline = []; // коллекция медиа-файлов в тексте
     $media_titles = []; // коллекция медиа-файлов в тайтле статьи
 
-    // *** EXPORT ARTICLES ***
+    /* =================================================================================================================*/
+    /* ============================        EXPORT ARTICLES           ===================================================*/
+    /* =================================================================================================================*/
     if (getenv('EXPORT.ARTICLES')) {
         if (getenv('EXPORT.NAME_BY_TYPE') == 'directory') {
             FFIECommon::checkDirectory(__DIR__ . DIRECTORY_SEPARATOR . getenv('PATH.EXPORT.ARTICLES'));
             FFIECommon::checkDirectory(__DIR__ . DIRECTORY_SEPARATOR . getenv('PATH.EXPORT.NEWS'));
         }
 
-        // запрос
-        // $select_query = "SELECT id FROM articles WHERE id IN (16108,19899,27927,29940,31181,31717,32441,33830,34591,34662,35442,36138,37384,38294) ORDER BY id";
-        // $select_query = "SELECT id FROM articles  ORDER BY id LIMIT 1000";
-        // $select_query = "SELECT id FROM articles WHERE s_hidden = 0 AND s_draft = 0 AND cdate IS NOT NULL ORDER BY id LIMIT 1000";
-        $select_query = "SELECT id FROM articles WHERE s_hidden = 0 AND s_draft = 0 AND cdate IS NOT NULL ORDER BY id";
+        $sql_source_file = "get-articles.sql";
+        $select_query
+            = is_file($sql_source_file)
+            ? file_get_contents($sql_source_file)
+            : "SELECT id FROM articles WHERE s_hidden = 0 AND s_draft = 0 AND cdate IS NOT NULL ORDER BY id";
+        dd($select_query);
 
         // получаем список ID статей
         $articles_ids_list = DB::query($select_query)->fetchAll(PDO::FETCH_COLUMN);
@@ -103,6 +112,9 @@ try {
         FFIECommon::exportJSON("{$export_directory}/list-items.json", $articles_list);
     }
 
+    /* =================================================================================================================*/
+    /* ============================        EXPORT PAGES           ===================================================*/
+    /* =================================================================================================================*/
     if (getenv('EXPORT.PAGES')) {
         if (getenv('EXPORT.NAME_BY_TYPE') == 'directory') {
             FFIECommon::checkDirectory(__DIR__ . DIRECTORY_SEPARATOR . getenv('PATH.EXPORT.PAGES'));
@@ -146,6 +158,10 @@ try {
         FFIECommon::exportJSON("{$export_directory}/list-pages.json", $pages_list);
     }
 
+    /* =================================================================================================================*/
+    /* ============================        EXPORT PLACES           ===================================================*/
+    /* =================================================================================================================*/
+
     if (getenv('EXPORT.PLACES')) {
         if (getenv('EXPORT.NAME_BY_TYPE') == 'directory') {
             FFIECommon::checkDirectory(__DIR__ . DIRECTORY_SEPARATOR . getenv('PATH.EXPORT.PLACES'));
@@ -160,17 +176,48 @@ try {
          */
         while ($place = $sth_places->fetchObject(ExportPlace::class)) {
 
-            $place_export = $place->export();
+            $exported_place = $place->export();
 
-            $filename = FFIECommon::getExportFilename($place_export, 5);
-            FFIECommon::exportJSON($filename, $place_export);
+            $filename = FFIECommon::getExportFilename($exported_place, 5);
+            FFIECommon::exportJSON($filename, $exported_place);
 
-            CLIConsole::say(" Item id = <font color='green'>{$place_export['id']}</font> exported to file <font color='yellow'>{$filename}</font>");
+            CLIConsole::say(" Place id = <font color='green'>{$exported_place['id']}</font> exported to file <font color='yellow'>{$filename}</font>");
+        }
+    }
+
+    /* =================================================================================================================*/
+    /* ============================        EXPORT DISTRICTS          ===================================================*/
+    /* =================================================================================================================*/
+
+    if (getenv('EXPORT.DISTRICTS')) {
+        if (getenv('EXPORT.NAME_BY_TYPE') == 'directory') {
+            FFIECommon::checkDirectory(__DIR__ . DIRECTORY_SEPARATOR . getenv('PATH.EXPORT.DISTRICTS'));
+        }
+
+        $select_query  = ExportDistrict::QUERY_FETCH_DISTRICTS;
+
+        $sth = DB::C()->query($select_query);
+
+        /**
+         * @var $district ExportDistrict
+         */
+
+        while ($district = $sth->fetchObject(ExportDistrict::class)) {
+
+            $exported_district = $district->export();
+
+            $filename = FFIECommon::getExportFilename($exported_district, 3);
+            FFIECommon::exportJSON($filename, $exported_district);
+
+            CLIConsole::say(" District id = <font color='green'>{$exported_district['id']}</font> exported to file <font color='yellow'>{$filename}</font>");
         }
     }
 
 
 
+    /* =================================================================================================================*/
+    /* ============================        EXPORT dictionaries       ===================================================*/
+    /* =================================================================================================================*/
 
     CLIConsole::say("Exporting <font color='yellow'>{$export_directory}/dictionary-media-inline.json</font>...");
     ksort($media_inline, SORT_NATURAL);

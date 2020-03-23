@@ -1,5 +1,7 @@
 <?php
 
+namespace FFIExport;
+
 use Arris\DB;
 
 class ExportPage
