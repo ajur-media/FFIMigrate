@@ -120,19 +120,21 @@ class ExportDistrict extends Export
 
         $html
             = getenv('FORCE.DISTRICTS.STYLING') == 1
-            ? "<style type='text/css'>ul.ffi { list-style: none; } ul.ffi li:before { content: '»'; margin-right: 5px; }</style> "
-            : "";
+            ? '<style type="text/css">ul.ffi { list-style: none; } ul.ffi li:before { content: "»"; margin-right: 5px; }</style> '
+            : '';
 
         foreach ($_content as $rubric_content) {
-            $html .= "<h1>{$rubric_content['title']}</h1>" . "<p>";
+            $html .= "<h1>{$rubric_content['title']}</h1>";
+            $html .= "<p>";
 
-            $html .= "  <ul class='ffi'>";
+            $html .= "  <ul class=\"ffi\">";
 
             foreach ($rubric_content['items'] as $links) {
-                $html .= "    <li><a href='{$ffi_url}/places/{$links['id']}/'>{$links['title']}</a></li>";
+                $html .= "    <li><a href=\"{$ffi_url}/places/{$links['id']}/\">{$links['title']}</a></li>";
             }
 
-            $html .= "  </ul>" . "</p>";
+            $html .= "  </ul>";
+            $html .= "</p>";
         } // rubrics
 
         return $html;

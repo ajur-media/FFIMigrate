@@ -151,6 +151,8 @@ WHERE p.s_hidden = 0
 
     private function _addTableRow($link, $title)
     {
+        /*return "<tr>    <td width=\"30%\">{$title}</td>    <td><a href=\"{$link}\" target=\"_blank\">{$link}</a></td></tr>";*/
+
         return <<<HEREDOC_ADD_TABLE_ROW
 <tr>
     <td width="30%">{$title}</td>
