@@ -49,7 +49,7 @@ class ExportDistrict extends Export
             'content'   =>  [
                 'title'     =>  FFIECommon::_trim($this->name, 'TRIM.TITLE'),
                 'lead'      =>  trim(strip_tags($this->text_bb)),
-                'text'      =>  $html,
+                'text_bb'   =>  $html,
                 'raw'       =>  $this->_content
             ],
             'media'     =>  [
