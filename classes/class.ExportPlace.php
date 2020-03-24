@@ -91,11 +91,72 @@ WHERE p.s_hidden = 0
             ],
             'tags'  =>  @unserialize($this->tags)
         ];
+
+        $html = $this->makeContent();
+
+        // update
+        $this->_dataset['content']['text_bb'] = $html;
     }
 
     public function export()
     {
         return $this->_dataset;
+    }
+
+    /**
+     * Достраивает HTML-контент с учетом локейшенов/контактов
+     *
+     * @return string
+     */
+    private function makeContent()
+    {
+        $html = $this->text_bb;
+
+        $html .= '<br> <table border="0">';
+
+        if (!empty($this->_dataset['contacts']['website'])) {
+            $html .= $this->_addTableRow($this->_dataset['contacts']['website'], "Сайт");
+        }
+
+        if (!empty($this->_dataset['contacts']['worktime'])) {
+            $html .= $this->_addTableRow($this->_dataset['contacts']['worktime'], "Время работы");
+        }
+
+        if (!empty($this->_dataset['contacts']['email'])) {
+            $html .= $this->_addTableRow($this->_dataset['contacts']['email'], "E-Mail");
+        }
+
+        if (!empty($this->_dataset['contacts']['phone'])) {
+            $html .= $this->_addTableRow($this->_dataset['contacts']['phone'], "Телефон");
+        }
+
+        if (!empty($this->_dataset['location']['address'])) {
+            $html .= $this->_addTableRow($this->_dataset['location']['address'], "Адрес");
+        }
+
+        $available_langs = [];
+        if ($this->_dataset['langs']['fi'] == "1") $available_langs[] = "финский";
+        if ($this->_dataset['langs']['en'] == "1") $available_langs[] = "английский";
+        if ($this->_dataset['langs']['ru'] == "1") $available_langs[] = "русский";
+        $available_langs = implode(', ', $available_langs);
+
+        if (!empty($available_langs)) {
+            $html .= $this->_addTableRow($available_langs, "Языки обслуживания");
+        }
+
+        $html .= '</table>';
+
+        return $html;
+    }
+
+    private function _addTableRow($link, $title)
+    {
+        return <<<HEREDOC_ADD_TABLE_ROW
+<tr>
+    <td width="30%">{$title}</td>
+    <td><a href="{$link}" target="_blank">{$link}</a></td>
+</tr>
+HEREDOC_ADD_TABLE_ROW;
     }
 
 } // class

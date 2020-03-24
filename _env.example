@@ -5,11 +5,12 @@
 
 DB_USERNAME         = ""
 DB_PASSWORD         = ""
-DB_DATABASE     = "fontankafi"
+DB_DATABASE     = ""
 
 # Path to storage (with tailing slash)
 
 PATH.STORAGE    = "/var/www/fontankafi.storage/"
+PATH.DOMAIN     = "http://fontankafi.ru"
 
 # Export directory (without tailing slash) from current
 
@@ -27,7 +28,7 @@ EXPORT.NAME_BY_TYPE     = 'directory'
 EXPORT.ARTICLES         = 0
 EXPORT.PAGES            = 0
 EXPORT.PLACES           = 0
-EXPORT.DISTRICTS        = 0
+EXPORT.DISTRICTS        = 1
 
 # -- Paths --
 
@@ -41,6 +42,7 @@ PATH.EXPORT.DISTRICTS       =   "_export/districts"
 TRIM.AUTHOR = 1
 TRIM.TITLE = 1
 TRIM.LEAD = 1
+TRIM.TEXT = 1
 
 # Общие настройки экспорта
 EXPORT.MEDIA.ONLY_PRESENT_FILES = 0
@@ -58,4 +60,7 @@ MEDIA.HTML.SAVE_DEBUG = 0
 
 # Настройки экспорта MEDIA:inline media
 MEDIA.MEDIA.EXPORT_RAW = 0              # сохранять ли исходные сырые данные?
+
+# форсированная стилизация экспорта контента Districts
+FORCE.DISTRICTS.STYLING = 1
 

@@ -116,18 +116,23 @@ class ExportDistrict extends Export
      */
     private function convertDatasetToHTML(array $_content)
     {
-        $html = "<style type='text/css'>ul.ffi { list-style: none; } ul.ffi li:before { content: '»'; margin-right: 5px; }</style>" . PHP_EOL;
+        $ffi_url = getenv('PATH.DOMAIN');
+
+        $html
+            = getenv('FORCE.DISTRICTS.STYLING') == 1
+            ? "<style type='text/css'>ul.ffi { list-style: none; } ul.ffi li:before { content: '»'; margin-right: 5px; }</style> "
+            : "";
 
         foreach ($_content as $rubric_content) {
-            $html .= PHP_EOL . "<h1>{$rubric_content['title']}</h1>" . PHP_EOL . "<p>" . PHP_EOL;
+            $html .= "<h1>{$rubric_content['title']}</h1>" . "<p>";
 
-            $html .= "  <ul class='ffi'>" . PHP_EOL;
+            $html .= "  <ul class='ffi'>";
 
             foreach ($rubric_content['items'] as $links) {
-                $html .= "    <li><a href='/places/{$links['id']}/'>{$links['title']}</a></li>" . PHP_EOL;
+                $html .= "    <li><a href='{$ffi_url}/places/{$links['id']}/'>{$links['title']}</a></li>";
             }
 
-            $html .= "  </ul>" . PHP_EOL . "</p>" . PHP_EOL;
+            $html .= "  </ul>" . "</p>";
         } // rubrics
 
         return $html;
