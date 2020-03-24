@@ -61,7 +61,7 @@ WHERE s_draft = 0 AND cdate IS NOT NULL ORDER BY id";
      * @var mixed  - Признак того, что итем содержал JS-код перехода на внешний материал
      * FALSE или СТРОКА
      */
-    private $is_external = false;
+    public $is_external = false;
 
     /**
      * ArticleExporter constructor.
@@ -70,13 +70,12 @@ WHERE s_draft = 0 AND cdate IS NOT NULL ORDER BY id";
      */
     public function __construct()
     {
-        $this->_articles_related = $this->getRelatedArticles();
-
-        $this->_article_media_html = $this->parseHTMLWidgets();
-
-        $this->_article_media_inline = parent::parseMediaInline($this->id, $this->_media_collection_inline);
+        $this->_article_media_inline = parent::parseMediaInline($this->id, $this->_media_collection_inline, 'articles_files');
         $this->_article_media_title = parent::parseMediaTitle($this->photo);
+        $this->_article_media_html = parent::parseHTMLWidgets($this->html);
 
+        $this->_articles_related = $this->getRelatedArticles();
+        // $this->_article_media_html = $this->parseHTMLWidgets();
         $this->_article_media_reports = $this->parseMediaReports();
 
         $this->_dataset = [
@@ -94,13 +93,12 @@ WHERE s_draft = 0 AND cdate IS NOT NULL ORDER BY id";
                 'is_draft'  =>  (int)$this->s_draft,                             // установлен флаг "черновик"
                 'is_bold'    =>  (int)$this->s_bold,                        // тайтл жирно
                 'is_own'        =>  (int)$this->s_own,                      //  с копирайтом © Fontanka.Fi
-
             ],
             'content'   =>  [
                 'title'     =>  FFIECommon::_trim($this->title, 'TRIM.TITLE'),
                 'lead'      =>  FFIECommon::_trim($this->short, 'TRIM.LEAD'),
                 'text_length'   =>  mb_strlen(trim($this->text_bb)),
-                'text_bb'   =>  $this->text_bb,                                 // исходный текст, размеченный BB-кодами
+                'text_bb'   =>  FFIECommon::_trim($this->text_bb, 'TRIM.TEXT'),   // исходный текст, размеченный BB-кодами
             ],
             'media'     =>  [
                 'title'     =>  $this->_article_media_title,
@@ -113,9 +111,9 @@ WHERE s_draft = 0 AND cdate IS NOT NULL ORDER BY id";
                 'list'  =>  $this->_articles_related,
             ],
             'meta'    =>  [
-                'title'     =>  $this->meta_title,
-                'keywords'  =>  $this->meta_keywords,
-                'description'=> $this->meta_descr,
+                'title'     =>  trim($this->meta_title),
+                'keywords'  =>  trim($this->meta_keywords),
+                'description'=> trim($this->meta_descr),
             ],
             'relations' =>  [
                 'districts' =>  $this->exportArticleDistricts(),
@@ -251,62 +249,6 @@ WHERE rf.item = {$rid}
 
         return $_reports;
 
-    }
-
-    /**
-     * Добавляет информацию по HTML-виджетам
-     *
-     * @return array
-     * @throws Regex\RegexFailed
-     */
-    private function parseHTMLWidgets()
-    {
-        $_data = [];
-
-        // 'YTowOnt9' - это закодированное 'a:0:{}'
-        // 'N;' - null
-        // 'Tjs=' - эквивалентно 'N;'
-        // чаще всего данные будут base64
-        /*if ($this->html === ''
-            || $this->html === 'YTowOnt9'
-            || $this->html === 'a:0:{}'
-            || $this->html === 'Tjs='
-            || $this->html === 'N;'
-            || $this->html === ''
-        ) return false; // виджетов нет
-        */
-
-        $html = FFIECommon::_isBase64($this->html) ? base64_decode($this->html) : $this->html;
-        $html = unserialize($html);
-
-        if (!$html) return [];
-
-        $_data['_'] = count($html);
-
-        foreach ($html as $id => $code) {
-            // проверяем [noindex canonical redirect -> longread]
-            $is_external_href = FFIECommon::checkExternalLink($code);
-
-            if ($is_external_href !== false) {
-                $this->is_external = $is_external_href;
-            }
-
-            $set = [];
-
-            if (getenv('MEDIA.HTML.EXPORT_STRING'))
-                $set['html'] = $code;
-
-            if (getenv('MEDIA.HTML.EXPORT_BASE64'))
-                $set['base64'] = base64_encode($code);
-
-            $_data[$id] = $set;
-        }
-
-        if (getenv('MEDIA.HTML.SAVE_DEBUG')) {
-            $this->_dataset['debug:html'] = $html;
-        }
-
-        return $_data;
     }
 
     /**

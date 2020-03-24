@@ -55,8 +55,7 @@ ORDER BY p.id
     {
         $this->_related = $this->getRelatedPages();
 
-        $this->_media_inline = parent::parseMediaInline($this->id, $this->_media_collection_inline);
-        // $this->_media_inline = FFIECommon::parseMediaInline($this->id, $this->_media_collection_inline);
+        $this->_media_inline = parent::parseMediaInline($this->id, $this->_media_collection_inline, 'pages_files');
 
         $this->_dataset = [
             'id'        =>  (int)$this->id,
@@ -69,7 +68,7 @@ ORDER BY p.id
                 'title'     =>  FFIECommon::_trim($this->title, 'TRIM.TITLE'),
                 'title2'    =>  FFIECommon::_trim($this->title2, 'TRIM.TITLE'),
                 'text_length'   =>  mb_strlen(trim($this->text_bb)),
-                'text_bb'   =>  $this->text_bb,
+                'text_bb'   =>  FFIECommon::_trim($this->text_bb, 'TRIM.TEXT'),
             ],
             'old_url'   =>  $this->old_url,
             'media'     =>  [
@@ -80,17 +79,17 @@ ORDER BY p.id
                 'name'      =>  $this->rubric_name
             ],
             'faq'       =>  [
-                'question'  =>  $this->i_question,
-                'answer'    =>  $this->i_answer
+                'question'  =>  trim($this->i_question),
+                'answer'    =>  trim($this->i_answer)
             ],
             'view_also'  =>  [
                 '_'     =>  count($this->_related),
                 'list'  =>  $this->_related,
             ],
             'meta'    =>  [
-                'title'     =>  $this->meta_title,
-                'keywords'  =>  $this->meta_keywords,
-                'description'=> $this->meta_descr,
+                'title'     =>  trim($this->meta_title),
+                'keywords'  =>  trim($this->meta_keywords),
+                'description'=> trim($this->meta_descr),
             ],
         ];
 
@@ -121,7 +120,7 @@ ORDER BY cdate DESC")
                     return [
                         'id'    =>  (int)$id,
                         'cdate' =>  FFIECommon::_date_format($cdate),
-                        'title' =>  $title
+                        'title' =>  trim($title)
                     ];
                 });
     }

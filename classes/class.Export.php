@@ -44,7 +44,7 @@ class Export
             }
 
             if ($is_present && $_descr) {
-                $_media_title['titles'] = $u_photo['descr'];
+                $_media_title['titles'] = trim($u_photo['descr']);
             }
 
         }
@@ -61,18 +61,17 @@ class Export
      *
      * @param $id
      * @param $media_collection_inline
+     * @param $relation_table - таблица связи КОЛЛЕКЦИЯ_ИТЕМОВ <-- ?? --> FILES (pages_files, articles_files, etc)
      * @return array
      * @throws Exception
      */
-    public function parseMediaInline($id, &$media_collection_inline)
+    public function parseMediaInline($id, &$media_collection_inline, $relation_table)
     {
-
-
         $query = "
 SELECT
-       pf.id AS embed_id, 
-       pf.fid AS mediafile_id,
-       pf.descr AS media_description,
+       J.id AS embed_id, 
+       J.fid AS mediafile_id,
+       J.descr AS media_description,
        f.source AS media_source,
        f.link AS media_link,
        f.type AS media_type,
@@ -80,9 +79,9 @@ SELECT
        f.file AS mediafile_filename,
        f.name AS mediafile_originalfilename
 FROM 
-     pages_files AS pf 
-LEFT JOIN files AS f ON f.id = pf.fid 
-WHERE pf.item = {$id}
+     {$relation_table} AS J 
+LEFT JOIN files AS f ON f.id = J.fid 
+WHERE J.item = {$id}
         ";
 
         $sth = DB::query($query);
@@ -97,7 +96,7 @@ WHERE pf.item = {$id}
             $info_media = [
                 'fid'   =>  $media_fid,
                 'type'  =>  $media_type,
-                'descr' =>  $resource['media_description'],
+                'descr' =>  trim($resource['media_description']),
             ];
 
             if (getenv('MEDIA.MEDIA.EXPORT_RAW')) {
@@ -108,11 +107,11 @@ WHERE pf.item = {$id}
                 'fid'       =>  $media_fid,
                 'type'      =>  $media_type,
                 'from'      =>  [
-                    'source'    =>  $resource['media_source'],
-                    'link'      =>  $resource['media_link'],
+                    'source'    =>  trim($resource['media_source']),
+                    'link'      =>  trim($resource['media_link']),
                 ],
                 'cdate'     =>  FFIECommon::_date_format($resource['media_cdate']),
-                'original_name' =>  $resource['mediafile_originalfilename'],
+                'original_name' =>  trim($resource['mediafile_originalfilename']),
             ];
 
             $basepath_storage = $media_type . '/' . date('Y/m', strtotime($resource['media_cdate'])) . '/';
@@ -168,8 +167,64 @@ WHERE pf.item = {$id}
         return [
             'lat'       =>  @round($coords[0], 5),
             'lon'       =>  @round($coords[1], 5),
-            'raw'       =>  $raw
+            'raw'       =>  trim($raw)
         ];
+    }
+
+    /**
+     *
+     * @param $source_html
+     * @return array
+     * @throws \Spatie\Regex\RegexFailed
+     */
+    public function parseHTMLWidgets($source_html)
+    {
+        $_data = [];
+
+        // 'YTowOnt9' - это закодированное 'a:0:{}'
+        // 'N;' - null
+        // 'Tjs=' - эквивалентно 'N;'
+        // чаще всего данные будут base64
+        /*if ($this->html === ''
+            || $this->html === 'YTowOnt9'
+            || $this->html === 'a:0:{}'
+            || $this->html === 'Tjs='
+            || $this->html === 'N;'
+            || $this->html === ''
+        ) return false; // виджетов нет
+        */
+
+        $html = FFIECommon::_isBase64($source_html) ? base64_decode($source_html) : $source_html;
+        $html = unserialize($html);
+
+        if (!$html) return [];
+
+        $_data['_'] = count($html);
+
+        foreach ($html as $id => $code) {
+            // проверяем [noindex canonical redirect -> longread]
+            $is_external_href = FFIECommon::checkExternalLink($code);
+
+            if ($is_external_href !== false) {
+                $this->is_external = $is_external_href;
+            }
+
+            $set = [];
+
+            if (getenv('MEDIA.HTML.EXPORT_STRING'))
+                $set['html'] = $code;
+
+            if (getenv('MEDIA.HTML.EXPORT_BASE64'))
+                $set['base64'] = base64_encode($code);
+
+            $_data[$id] = $set;
+        }
+
+        if (getenv('MEDIA.HTML.SAVE_DEBUG')) {
+            $this->_dataset['debug:html'] = $html;
+        }
+
+        return $_data;
     }
 
 } // class

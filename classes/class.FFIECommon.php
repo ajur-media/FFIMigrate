@@ -125,8 +125,10 @@ class FFIECommon
      * @param $env
      * @return string
      */
-    public static function _trim($value, $env)
+    public static function _trim($value, $env = null)
     {
+        if (is_null($env)) return trim($value);
+
         return getenv($env) ? trim($value) : $value;
     }
 

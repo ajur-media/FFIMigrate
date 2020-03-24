@@ -53,7 +53,7 @@ try {
         // build select&count query
         $sql_source_file = "get-articles.json";
         if (is_file($sql_source_file) && $sql_source_file = file_get_contents($sql_source_file)) {
-            $sql_source_file = json_decode($sql_source_file);
+            $sql_source_file = json_decode($sql_source_file, true);
 
             $query_count = "{$sql_source_file['count']} {$sql_source_file['from']} {$sql_source_file['where']}";
             $query_data  = "{$sql_source_file['data']} {$sql_source_file['from']} {$sql_source_file['where']} {$sql_source_file['order']}" ;

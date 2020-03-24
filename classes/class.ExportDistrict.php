@@ -47,13 +47,12 @@ class ExportDistrict extends Export
             'id'        =>  $this->id,
             'type'      =>  'district',
             'content'   =>  [
-                'title'     =>  $this->name,
+                'title'     =>  FFIECommon::_trim($this->name, 'TRIM.TITLE'),
                 'lead'      =>  trim(strip_tags($this->text_bb)),
                 'text'      =>  $html,
                 'raw'       =>  $this->_content
             ],
             'media'     =>  [
-                // 'title'     =>  FFIECommon::parseMediaTitle($this->photo)
                 'title'     =>  parent::parseMediaTitle($this->photo)
             ],
             'coords'    =>  parent::parseCoords($this->coords)
