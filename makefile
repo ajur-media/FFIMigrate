@@ -7,8 +7,9 @@ update:		##@build Update project from GIT
 	@echo Updating project from GIT
 	git pull
 
-clear:	    ##@clear remove export directory
-	rm _export -rf
+clean:	    ##@clear remove export directory
+	@echo Cleaning export directory
+	@rm _export -rf
 
 export:	    ##@export content
 	@php export.php
