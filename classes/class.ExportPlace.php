@@ -115,7 +115,7 @@ WHERE p.s_hidden = 0
         $html .= '<br> <table border="0">';
 
         if (!empty($this->_dataset['contacts']['website'])) {
-            $html .= $this->_addTableRow($this->_dataset['contacts']['website'], "Сайт");
+            $html .= $this->_addTableRow($this->_dataset['contacts']['website'], "Сайт", 'href');
         }
 
         if (!empty($this->_dataset['contacts']['worktime'])) {
@@ -123,7 +123,7 @@ WHERE p.s_hidden = 0
         }
 
         if (!empty($this->_dataset['contacts']['email'])) {
-            $html .= $this->_addTableRow($this->_dataset['contacts']['email'], "E-Mail");
+            $html .= $this->_addTableRow($this->_dataset['contacts']['email'], "E-Mail", 'email');
         }
 
         if (!empty($this->_dataset['contacts']['phone'])) {
@@ -149,14 +149,33 @@ WHERE p.s_hidden = 0
         return $html;
     }
 
-    private function _addTableRow($link, $title)
+    /**
+     * @param $data
+     * @param $field_title
+     * @param string $type - '', 'href', 'email'
+     * @return string
+     */
+    private function _addTableRow($data, $field_title, $type = '')
     {
-        /*return "<tr>    <td width=\"30%\">{$title}</td>    <td><a href=\"{$link}\" target=\"_blank\">{$link}</a></td></tr>";*/
+        switch ($type) {
+            case 'href': {
+                $field_data = "<a href=\"{$data}\" target=\"_blank\">{$data}</a>";
+                break;
+            }
+            case 'email': {
+                $field_data = "<a href=\"mailto:{$data}\" target=\"_blank\">{$data}</a>";
+                break;
+            }
+            default: {
+                $field_data = $data;
+                break;
+            }
+        }
 
         return <<<HEREDOC_ADD_TABLE_ROW
 <tr>
-    <td width="30%">{$title}</td>
-    <td><a href="{$link}" target="_blank">{$link}</a></td>
+    <td width="30%">{$field_title}</td>
+    <td>{$field_data}</td>
 </tr>
 HEREDOC_ADD_TABLE_ROW;
     }
